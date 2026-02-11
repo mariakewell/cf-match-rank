@@ -22,8 +22,7 @@
     "tailwind-merge": "^2.2.0",
     "lucide-vue-next": "^0.330.0",
     "date-fns": "^3.3.0",
-    "@vueuse/core": "^10.9.0",
-    "@vueuse/nuxt": "^10.9.0"
+    "@vueuse/core": "^10.9.0"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.11.0",

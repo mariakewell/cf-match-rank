@@ -38,19 +38,7 @@
 3. 点击 **Create database**。
 4. 命名为 `tennis-rank-db`，点击创建。
 5. **重要**：复制生成的 `Database ID`。
-6. 打开本地代码中的 `wrangler.toml` 文件，将 `database_id` 替换为你刚才复制的 ID：
-   ```toml
-   [[d1_databases]]
-   binding = "DB" # 不要修改这个名字
-   database_name = "tennis-rank-db"
-   database_id = "在这里粘贴你的ID"
-   ```
-7. 再次提交 `wrangler.toml` 的更改并推送到 GitHub：
-   ```bash
-   git add wrangler.toml
-   git commit -m "Update D1 database ID"
-   git push
-   ```
+6. 记下刚才复制的 `Database ID`，后续在 Cloudflare Pages 的 **Settings -> Functions -> D1 bindings** 中直接选择该数据库并绑定变量名 `DB`（无需在仓库中提交 wrangler 配置文件）。
 
 ### 第三步：连接 Cloudflare Pages
 
@@ -60,14 +48,14 @@
 4. **配置构建设置 (Build settings)**：
    - **Framework preset**: 选择 `Nuxt`。
    - **Build command**: `npm run build`
-   - **Build output directory**: `.output/public` (注意：Nuxt 在 Cloudflare preset 下通常输出到 .output/public)
+   - **Build output directory**: `dist`
 5. 点击 **Save and Deploy**。
 
 *注意：第一次部署可能会成功，但应用会报错，因为数据库绑定还没生效，且表结构还没创建。这是正常的。*
 
 ### 第四步：配置数据库绑定 (Binding)
 
-虽然我们在 `wrangler.toml` 里写了配置，但通过 Pages 界面连接 Git 部署时，通常需要手动确认绑定。
+通过 Pages 界面连接 Git 部署时，需要在 Dashboard 手动添加 D1 绑定。
 
 1. 在你的 Pages 项目页面，点击 **Settings** -> **Functions**。
 2. 找到 **D1 database bindings** 部分。
@@ -110,7 +98,7 @@
    npm install
    ```
 
-2. 确保 `wrangler.toml` 中的 `database_id` 已配置。
+2. 确保 Cloudflare Pages 项目中已添加 D1 绑定（变量名 `DB`）。
 
 3. 生成本地开发用的 D1 数据库结构：
    ```bash

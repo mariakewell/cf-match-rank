@@ -5,8 +5,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
     '@nuxtjs/tailwindcss',
-    '@pinia/nuxt',
-    '@vueuse/nuxt'
+    '@pinia/nuxt'
   ],
   nitro: {
     preset: 'cloudflare-pages',
