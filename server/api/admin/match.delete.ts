@@ -1,16 +1,14 @@
-import { defineEventHandler, readBody, createError } from 'h3';
-import { useDb } from '~/server/utils/db';
+import { createError, defineEventHandler, readBody } from 'h3';
+import { eq } from 'drizzle-orm';
 import { matches } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
-import { sql } from 'drizzle-orm';
+import { useDb } from '~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
   checkAuth(event);
-  const body = await readBody(event) as any;
+  const body = await readBody<any>(event);
+  if (!body.id) throw createError({ statusCode: 400, statusMessage: 'ID Required' });
   const db = useDb(event);
-
-  if (!body.id) throw createError({ statusCode: 400, statusMessage: "ID Required" });
-
-  await db.delete(matches).where(sql`${matches.id} = ${body.id}`);
+  await db.delete(matches).where(eq(matches.id, Number(body.id)));
   return { success: true };
 });

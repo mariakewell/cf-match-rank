@@ -1,21 +1,18 @@
-import { defineEventHandler, readBody, createError } from 'h3';
-import { useDb } from '~/server/utils/db';
-import { players, matches } from '~/shared/database/schema';
+import { createError, defineEventHandler, readBody } from 'h3';
+import { eq, or } from 'drizzle-orm';
+import { matches, players } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
-import { sql } from 'drizzle-orm';
+import { useDb } from '~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
   checkAuth(event);
-  const body = await readBody(event) as any;
-  const db = useDb(event);
+  const body = await readBody<any>(event);
+  if (!body.id) throw createError({ statusCode: 400, statusMessage: 'ID Required' });
 
-  if (!body.id) throw createError({ statusCode: 400, statusMessage: "ID Required" });
   const pId = Number(body.id);
-
-  // Delete matches first
-  await db.delete(matches).where(sql`${matches.p1Id} = ${pId} OR ${matches.p2Id} = ${pId}`);
-  // Delete player
-  await db.delete(players).where(sql`${players.id} = ${pId}`);
+  const db = useDb(event);
+  await db.delete(matches).where(or(eq(matches.p1Id, pId), eq(matches.p2Id, pId)));
+  await db.delete(players).where(eq(players.id, pId));
 
   return { success: true };
 });

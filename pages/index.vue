@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { format } from 'date-fns';
 const { show } = useToast();
 
 // Fetch all data raw
-const { data, refresh } = await useFetch('/api/data');
+const { data } = await useFetch('/api/data');
 
 // Client-side State
 const filterDate = ref('');
@@ -42,8 +41,8 @@ const standings = computed(() => {
     const groupName = m.group;
     if (!result[groupName]) return;
     
-    const p1 = result[groupName].find(p => p.id === m.p1Id);
-    const p2 = result[groupName].find(p => p.id === m.p2Id);
+    const p1 = result[groupName].find(p => p.id === m.p1_id);
+    const p2 = result[groupName].find(p => p.id === m.p2_id);
     
     if (p1 && p2) {
       p1.score += m.s1;
@@ -80,7 +79,7 @@ const applyFilter = () => {
 const resetFilter = () => {
   filterDate.value = '';
   displayDate.value = '';
-  show('已显示全部数据');
+  window.location.href = '/';
 };
 
 const bgStyle = computed(() => {
@@ -90,6 +89,7 @@ const bgStyle = computed(() => {
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundAttachment: 'fixed',
+      minHeight: '100dvh',
       backgroundRepeat: 'no-repeat'
     };
   }
@@ -98,8 +98,8 @@ const bgStyle = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen pb-20" :style="bgStyle">
-    <div class="max-w-6xl mx-auto px-2 sm:px-4 pt-8">
+  <div class="min-h-[100dvh] pb-20" :style="bgStyle">
+    <div class="max-w-[1320px] mx-auto px-2 sm:px-4 pt-8">
       <!-- Header -->
       <header class="text-center mb-6 animate-fade-in-down" v-if="data">
         <h1 class="text-4xl md:text-5xl font-black text-orange-600 mb-2 tracking-tight">
@@ -136,7 +136,7 @@ const bgStyle = computed(() => {
       </div>
 
       <!-- Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
+      <div v-else class="rank-grid">
         <RankingLeaderboardCard 
           v-for="group in data.groups" 
           :key="group"
