@@ -1,13 +1,9 @@
 <script setup lang="ts">
+const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
-const form = reactive({
-  title: '',
-  notice: '',
-  background: ''
-});
-
+const form = reactive({ title: '', notice: '', background: '' });
 watchEffect(() => {
   if (data.value) {
     form.title = data.value.settings.title;
@@ -17,36 +13,37 @@ watchEffect(() => {
 });
 
 async function save() {
-  try {
-    await $fetch('/api/admin/settings', {
-      method: 'POST',
-      body: { type: 'config', ...form }
-    });
-    show('设置已更新');
+  const fd = new FormData();
+  fd.append('title', form.title);
+  fd.append('notice', form.notice);
+  fd.append('background', form.background);
+  const resp = await fetch('/api/settings', { method: 'POST', body: fd });
+  const text = await resp.text();
+  if (resp.ok) {
+    show(text || '设置已更新');
     refresh();
-  } catch(e) { show('保存失败', 'error'); }
+  } else {
+    show(text || '保存失败', 'error');
+  }
 }
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-4">
+  <div v-if="!auth" class="min-h-screen flex items-center justify-center bg-gray-100">
+    <form action="/api/login" method="POST" class="bg-white p-8 rounded-[20px] shadow-[0_10px_25px_rgba(0,0,0,0.1)] w-[90%] max-w-[350px] text-center">
+      <h2 class="mb-5 font-black text-gray-700 text-2xl">🎾 管理登录</h2>
+      <input type="password" name="password" placeholder="请输入管理员密码" class="w-full p-3 mb-4 border-2 border-gray-200 rounded-xl outline-none">
+      <button class="w-full p-3 bg-blue-500 text-white border-none rounded-xl font-bold">进入管理系统</button>
+    </form>
+  </div>
+  <div class="max-w-4xl mx-auto p-4" v-else>
     <NuxtLink to="/admin" class="btn-primary mb-4 no-underline">返回导航</NuxtLink>
-    <div class="card p-6">
-      <h2 class="font-bold text-lg mb-4">⚙️ 网站设置</h2>
+    <div class="card p-6" v-if="data"><h2 class="font-bold text-lg mb-4">⚙️ 网站设置</h2>
       <form @submit.prevent="save" class="grid grid-cols-1 gap-4">
-        <div>
-          <label class="text-xs font-bold text-gray-400">网站标题</label>
-          <input v-model="form.title" type="text" class="w-full p-2 border rounded">
-        </div>
-        <div>
-          <label class="text-xs font-bold text-gray-400">滚动公告</label>
-          <input v-model="form.notice" type="text" class="w-full p-2 border rounded">
-        </div>
-        <div>
-          <label class="text-xs font-bold text-gray-400">背景图URL (可选)</label>
-          <input v-model="form.background" type="url" class="w-full p-2 border rounded">
-        </div>
-        <button class="bg-gray-600 text-white py-2 rounded font-bold mt-2 hover:bg-gray-700">保存全局设置</button>
+        <div><label class="text-xs font-bold text-gray-400">网站标题</label><input v-model="form.title" type="text" class="w-full p-2 border rounded"></div>
+        <div><label class="text-xs font-bold text-gray-400">滚动公告</label><input v-model="form.notice" type="text" class="w-full p-2 border rounded"></div>
+        <div><label class="text-xs font-bold text-gray-400">背景图URL (可选)</label><input v-model="form.background" type="url" class="w-full p-2 border rounded"></div>
+        <button class="bg-gray-600 text-white py-2 rounded font-bold mt-2">保存全局设置</button>
       </form>
     </div>
   </div>

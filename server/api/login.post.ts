@@ -1,19 +1,22 @@
-import { defineEventHandler, readBody, setCookie, createError } from 'h3';
-import { useRuntimeConfig } from '#imports';
+import { createError, defineEventHandler, getRequestURL, readFormData, sendRedirect, setCookie } from 'h3';
+import { getAdminPassword } from '~/server/utils/auth';
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event) as any;
-  const config = useRuntimeConfig();
+  const formData = await readFormData(event);
+  const password = formData.get('password')?.toString() || '';
+  const adminPassword = getAdminPassword();
 
-  if (body.password === config.adminPassword) {
-    setCookie(event, 'auth', config.adminPassword, {
-      maxAge: 86400, // 1 day
+  if (password === adminPassword) {
+    setCookie(event, 'auth', adminPassword, {
+      maxAge: 86400,
       path: '/',
-      httpOnly: false, // Allow client access for simple checks if needed, or secure it
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: 'lax',
     });
-    return { success: true };
+
+    const referer = getRequestURL(event).pathname.startsWith('/api/') ? '/admin' : '/admin';
+    return sendRedirect(event, referer, 302);
   }
 
   throw createError({ statusCode: 403, statusMessage: '密码错误' });
