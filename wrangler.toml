@@ -1,6 +1,6 @@
 name = "tennis-rank-edge"
 compatibility_date = "2026-02-11"
-pages_build_output_dir = ".output/public"
+pages_build_output_dir = "dist"
 
 # 绑定 D1 数据库
 # 注意：id 需要在你创建数据库后替换成真实的 ID
