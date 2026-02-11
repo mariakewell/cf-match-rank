@@ -1,6 +1,6 @@
 import { defineEventHandler, setHeaders } from 'h3';
-import { checkAuth } from '~/server/utils/auth';
 import { loadState } from '~/server/utils/state';
+import { checkAuth } from '~/server/utils/auth';
 
 export default defineEventHandler(async (event) => {
   checkAuth(event);
@@ -10,11 +10,9 @@ export default defineEventHandler(async (event) => {
   for (const m of state.matches) {
     const p1 = state.players.find((p) => p.id === m.p1_id)?.name || '未知';
     const p2 = state.players.find((p) => p.id === m.p2_id)?.name || '未知';
-
     let winner = '平局';
     if (m.s1 > m.s2) winner = p1;
     else if (m.s2 > m.s1) winner = p2;
-
     const scoreStr = `="${m.s1}:${m.s2}"`;
     csvContent += `${m.date},${p1},${scoreStr},${p2},${winner}\n`;
   }

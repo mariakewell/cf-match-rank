@@ -1,111 +1,129 @@
 <script setup lang="ts">
+const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
-// Player Form
-const playerForm = reactive({ id: 0, name: '', groups: [] as string[] });
-const searchQuery = ref('');
+const playerForm = reactive({ id: '', name: '', groups: [] as string[] });
+const searchInput = ref('');
+const activeGroup = ref('');
 
-// Group Form
-const groupName = ref('');
+const filteredPlayers = computed(() => {
+  if (!data.value) return [];
+  const q = searchInput.value.trim().toLowerCase();
+  return data.value.players.filter((p) => {
+    const matchName = q === '' || p.name.toLowerCase().includes(q);
+    const matchGroup = activeGroup.value === '' || p.groups.includes(activeGroup.value);
+    return matchName && matchGroup;
+  });
+});
+
+async function postForm(url: string, payload: Record<string, any>) {
+  const fd = new FormData();
+  Object.entries(payload).forEach(([k, v]) => {
+    if (Array.isArray(v)) {
+      v.forEach((item) => fd.append(k, String(item)));
+    } else {
+      fd.append(k, String(v));
+    }
+  });
+  const resp = await fetch(url, { method: 'POST', body: fd });
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(text || '操作失败');
+  return text;
+}
 
 async function savePlayer() {
   try {
-    await $fetch('/api/admin/player', { method: 'POST', body: playerForm });
-    show('保存球员信息成功');
-    // Reset
-    playerForm.id = 0; playerForm.name = ''; playerForm.groups = [];
+    const text = await postForm('/api/player/save', playerForm as any);
+    show(text || '保存成功');
+    playerForm.id = '';
+    playerForm.name = '';
+    playerForm.groups = [];
     refresh();
-  } catch(e: any) { show(e.statusMessage, 'error'); }
+  } catch (e: any) {
+    show(e.message || '操作失败', 'error');
+  }
 }
 
 async function deletePlayer(id: number) {
-  if (!confirm('删除球员会同时删除其所有比赛记录，确定吗？')) return;
   try {
-    await $fetch('/api/admin/player', { method: 'DELETE', body: { id } });
-    show('删除成功');
+    const text = await postForm('/api/player/delete', { id });
+    show(text || '删除成功');
     refresh();
-  } catch(e) { show('操作失败', 'error'); }
+  } catch (e: any) {
+    show(e.message || '删除失败', 'error');
+  }
 }
 
-function editPlayer(p: any) {
-  playerForm.id = p.id;
-  playerForm.name = p.name;
-  playerForm.groups = [...p.groups];
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-async function addGroup() {
-  if (!groupName.value) return;
-  const newGroups = [...(data.value?.groups || []), groupName.value];
-  await saveGroups(newGroups);
-  groupName.value = '';
+async function addGroup(name: string) {
+  try {
+    const text = await postForm('/api/group/add', { name });
+    show(text || '添加成功');
+    refresh();
+  } catch (e: any) {
+    show(e.message || '操作失败', 'error');
+  }
 }
 
 async function deleteGroup(name: string) {
-  if (!confirm('确定删除该组别？这会从所有球员中移除该组别标签。')) return;
-  const newGroups = data.value!.groups.filter(g => g !== name);
-  await saveGroups(newGroups, 'delete', name);
-}
-
-async function saveGroups(groups: string[], action = 'update', groupName = '') {
   try {
-    await $fetch('/api/admin/settings', { 
-      method: 'POST', 
-      body: { type: 'groups', groups, action, groupName } 
-    });
-    show('组别已更新');
+    const text = await postForm('/api/group/delete', { name });
+    show(text || '删除成功');
     refresh();
-  } catch(e) { show('操作失败', 'error'); }
+  } catch (e: any) {
+    show(e.message || '操作失败', 'error');
+  }
 }
 
-// Filtering
-const filteredPlayers = computed(() => {
-  if (!data.value) return [];
-  const q = searchQuery.value.toLowerCase();
-  return data.value.players.filter(p => p.name.toLowerCase().includes(q));
-});
-
-// Filter by group click
-const filterGroup = (g: string) => {
-  searchQuery.value = '';
-  // This logic is slightly different from searching name, 
-  // but to keep it simple we just filter the list in place manually or add a group filter
-  // For now let's just toast and maybe implement a complex filter if needed, 
-  // but the request was to match the worker which used display:none
+const newGroup = ref('');
+const filterByGroup = (groupName: string) => {
+  searchInput.value = '';
+  activeGroup.value = groupName;
+  show(`正在查看: ${groupName}`);
+};
+const clearPlayerFilter = () => {
+  activeGroup.value = '';
+  searchInput.value = '';
+};
+const editPlayer = (p: any) => {
+  playerForm.id = String(p.id);
+  playerForm.name = p.name;
+  playerForm.groups = [...p.groups];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-4" v-if="data">
-    <NuxtLink to="/admin" class="btn-primary mb-4 no-underline">返回导航</NuxtLink>
-    
+  <div v-if="!auth" class="min-h-screen flex items-center justify-center bg-gray-100">
+    <form action="/api/login" method="POST" class="bg-white p-8 rounded-[20px] shadow-[0_10px_25px_rgba(0,0,0,0.1)] w-[90%] max-w-[350px] text-center">
+      <h2 class="mb-5 font-black text-gray-700 text-2xl">🎾 管理登录</h2>
+      <input type="password" name="password" placeholder="请输入管理员密码" class="w-full p-3 mb-4 border-2 border-gray-200 rounded-xl outline-none">
+      <button class="w-full p-3 bg-blue-500 text-white border-none rounded-xl font-bold">进入管理系统</button>
+    </form>
+  </div>
+
+  <div class="max-w-4xl mx-auto p-4" v-else-if="data">
+    <NuxtLink to="/admin" class="btn-primary inline-block mb-4">返回导航</NuxtLink>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Player Manager -->
       <div class="card p-6 md:col-span-2">
         <h2 class="font-bold text-lg mb-4 text-blue-500">👤 球员管理</h2>
-        
         <form @submit.prevent="savePlayer" class="mb-6 bg-blue-50 p-3 rounded-xl">
+          <input type="hidden" v-model="playerForm.id">
           <input v-model="playerForm.name" type="text" placeholder="姓名" class="w-full mb-2 p-2 rounded border" required>
           <div class="flex flex-wrap gap-2 mb-3">
-            <label v-for="g in data.groups" :key="g" class="flex items-center gap-1 bg-white px-2 py-1 rounded text-xs border cursor-pointer">
+            <label v-for="g in data.groups" :key="g" class="flex items-center gap-1 bg-white px-2 py-1 rounded text-xs border">
               <input type="checkbox" :value="g" v-model="playerForm.groups"> {{ g }}
             </label>
           </div>
-          <button class="w-full bg-blue-500 text-white rounded py-2 font-bold hover:bg-blue-600 transition">保存球员信息</button>
+          <button class="w-full bg-blue-500 text-white rounded py-2 font-bold">保存球员信息</button>
         </form>
-
         <div class="flex justify-between items-center mb-4">
-          <input v-model="searchQuery" type="text" placeholder="搜索姓名..." class="flex-1 p-2 border rounded">
-          <button @click="searchQuery = ''" class="ml-2 text-xs text-gray-500">显示全部</button>
+          <input v-model="searchInput" type="text" placeholder="搜索姓名..." class="flex-1 p-2 border rounded">
+          <button @click="clearPlayerFilter" class="ml-2 text-xs text-gray-500">显示全部</button>
         </div>
-
-        <div class="space-y-2">
-          <div v-for="p in filteredPlayers" :key="p.id" class="flex justify-between items-center bg-gray-50 p-2 rounded">
-            <div>
-              <div class="font-bold text-sm">{{ p.name }}</div>
-              <div class="text-[10px] text-gray-400">{{ p.groups.join(', ') }}</div>
-            </div>
+        <div>
+          <div v-for="p in filteredPlayers" :key="p.id" class="player-item flex justify-between items-center bg-gray-50 p-2 rounded mb-2">
+            <div><div class="font-bold text-sm">{{ p.name }}</div><div class="text-[10px] text-gray-400">{{ p.groups.join(', ') }}</div></div>
             <div class="flex gap-2">
               <button @click="editPlayer(p)" class="text-xs text-blue-400 font-bold">编辑</button>
               <button @click="deletePlayer(p.id)" class="text-xs text-red-400 font-bold">删除</button>
@@ -113,18 +131,17 @@ const filterGroup = (g: string) => {
           </div>
         </div>
       </div>
-
-      <!-- Group Manager -->
       <div class="card p-6 md:col-span-1">
         <h2 class="font-bold text-lg mb-4 text-purple-500">🏷️ 组别管理</h2>
-        <form @submit.prevent="addGroup" class="mb-4 border-b pb-4">
-          <input v-model="groupName" type="text" placeholder="新组别名" class="w-full p-2 rounded border mb-2" required>
-          <button class="w-full bg-purple-500 text-white py-2 rounded font-bold text-sm hover:bg-purple-600">添加组别</button>
+        <p class="text-[10px] text-gray-400 mb-3">提示：点击组别名可查看组内球员</p>
+        <form @submit.prevent="addGroup(newGroup)" class="mb-4 border-b pb-4">
+          <input v-model="newGroup" type="text" placeholder="新组别名" class="w-full p-2 rounded border mb-2" required>
+          <button class="w-full bg-purple-500 text-white py-2 rounded font-bold text-sm">添加组别</button>
         </form>
         <div class="space-y-1">
-          <div v-for="g in data.groups" :key="g" class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-purple-50">
-             <span class="font-bold text-sm flex-1">{{ g }}</span>
-             <button @click="deleteGroup(g)" class="text-red-300 hover:text-red-500 font-bold">×</button>
+          <div v-for="g in data.groups" :key="g" class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-purple-50 group">
+            <span class="font-bold text-sm flex-1" @click="filterByGroup(g)">{{ g }}</span>
+            <button @click="deleteGroup(g)" class="text-red-300 hover:text-red-500 font-bold">×</button>
           </div>
         </div>
       </div>

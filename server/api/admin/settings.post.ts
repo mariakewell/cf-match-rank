@@ -1,43 +1,42 @@
-import { defineEventHandler, readBody, createError } from 'h3';
-import { useDb } from '~/server/utils/db';
-import { settings, players } from '~/shared/database/schema';
+import { createError, defineEventHandler, readBody } from 'h3';
+import { eq } from 'drizzle-orm';
+import { players, settings } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
-import { sql } from 'drizzle-orm';
+import { useDb } from '~/server/utils/db';
+import { loadState } from '~/server/utils/state';
 
 export default defineEventHandler(async (event) => {
   checkAuth(event);
-  const body = await readBody(event) as any;
+  const body = await readBody<any>(event);
   const db = useDb(event);
 
   if (body.type === 'config') {
+    const state = await loadState(event);
     const config = {
-      title: body.title,
-      notice: body.notice,
-      background: body.background
+      title: body.title?.trim() || state.settings.title,
+      notice: body.notice?.trim() || state.settings.notice,
+      background: body.background?.trim() || state.settings.background,
     };
     await db.insert(settings).values({ key: 'config', value: JSON.stringify(config) })
       .onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(config) } });
-  } 
-  
-  else if (body.type === 'groups') {
-      // Add or remove groups
-      if (!body.groups || !Array.isArray(body.groups)) throw createError({statusCode: 400});
-      
-      await db.insert(settings).values({ key: 'groups', value: JSON.stringify(body.groups) })
-        .onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(body.groups) } });
+    return { success: true };
+  }
 
-      // If we are deleting a group, we might want to clean up players? 
-      // The Worker code removes the group from player.groups
-      if (body.action === 'delete') {
-          const groupName = body.groupName;
-          const allPlayers = await db.select().from(players).all();
-          for (const p of allPlayers) {
-              if (p.groups.includes(groupName)) {
-                  const newGroups = p.groups.filter(g => g !== groupName);
-                  await db.update(players).set({ groups: newGroups }).where(sql`${players.id} = ${p.id}`);
-              }
-          }
+  if (body.type === 'groups') {
+    if (!body.groups || !Array.isArray(body.groups)) throw createError({ statusCode: 400 });
+    await db.insert(settings).values({ key: 'groups', value: JSON.stringify(body.groups) })
+      .onConflictDoUpdate({ target: settings.key, set: { value: JSON.stringify(body.groups) } });
+
+    if (body.action === 'delete') {
+      const groupName = body.groupName;
+      const allPlayers = await db.select().from(players).all();
+      for (const p of allPlayers) {
+        if (p.groups.includes(groupName)) {
+          await db.update(players).set({ groups: p.groups.filter((g) => g !== groupName) }).where(eq(players.id, p.id));
+        }
       }
+    }
+    return { success: true };
   }
 
   return { success: true };
