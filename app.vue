@@ -1,5 +1,5 @@
 <template>
-  <div class="font-sans antialiased text-gray-900 bg-[#e6f5e6] min-h-screen selection:bg-orange-200 selection:text-orange-900">
+  <div class="font-sans antialiased text-gray-900 min-h-screen selection:bg-orange-200 selection:text-orange-900">
     <NuxtLoadingIndicator color="#f97316" />
     <UiToast />
     <NuxtLayout>
@@ -13,26 +13,24 @@
 
 body {
   font-family: 'Fredoka', sans-serif;
-  background-color: #e6f5e6;
+  background: radial-gradient(circle at top, #eefbf5 0%, #dbeafe 42%, #f8fafc 100%);
   min-height: 100vh;
-  padding: 1rem;
+  margin: 0;
+  padding: 0;
   color: #374151;
 }
 
 .rank-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 1.5rem;
   justify-content: center;
   align-items: start;
 }
 
 @media (max-width: 640px) {
-  body {
-    padding: 0.5rem;
-  }
   .rank-grid {
-    gap: 0.75rem;
+    gap: 1rem;
   }
 }
 </style>

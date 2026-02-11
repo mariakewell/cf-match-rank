@@ -85,11 +85,12 @@ const resetFilter = () => {
 const bgStyle = computed(() => {
   if (data.value?.settings?.background) {
     return {
-      backgroundImage: `url('${data.value.settings.background}')`,
-      backgroundSize: 'cover',
+      backgroundImage: `linear-gradient(160deg, rgba(15,23,42,0.6), rgba(30,64,175,0.25)), url('${data.value.settings.background}')`,
+      backgroundSize: 'cover, cover',
       backgroundPosition: 'center',
       backgroundAttachment: 'fixed',
-      backgroundRepeat: 'no-repeat'
+      backgroundRepeat: 'no-repeat',
+      backgroundBlendMode: 'soft-light'
     };
   }
   return {};
@@ -97,29 +98,29 @@ const bgStyle = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen pb-20" :style="bgStyle">
-    <div class="max-w-6xl mx-auto px-2 sm:px-4 pt-8">
+  <div class="min-h-screen pb-24" :style="bgStyle">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-8 md:pt-12">
       <!-- Header -->
       <header class="text-center mb-6 animate-fade-in-down" v-if="data">
-        <h1 class="text-4xl md:text-5xl font-black text-orange-600 mb-2 tracking-tight">
+        <h1 class="text-4xl md:text-6xl font-black text-white drop-shadow-[0_10px_30px_rgba(15,23,42,0.55)] mb-3 tracking-tight">
           {{ data.settings.title }}
         </h1>
-        <div class="inline-block bg-yellow-300 text-yellow-800 px-4 py-1 rounded-full font-bold text-sm transform -rotate-1">
+        <div class="inline-block bg-white/90 backdrop-blur-md text-slate-700 px-4 py-2 rounded-full font-bold text-sm border border-white/70 shadow-lg">
           📢 {{ data.settings.notice }}
         </div>
       </header>
 
       <!-- Filter Card -->
-      <div class="bg-white rounded-2xl shadow-[0_8px_0_#d1d5db] border-2 border-gray-100 p-4 mb-6 max-w-sm mx-auto">
+      <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-5 mb-8 max-w-xl mx-auto">
         <div class="flex flex-col gap-3">
-          <div class="text-gray-500 font-bold text-sm text-center">
+          <div class="text-slate-600 font-bold text-sm text-center">
             {{ displayDate ? `📅 正在查看 ${displayDate} 的积分:` : '📅 查看特定日期积分' }}
           </div>
-          <div class="flex flex-col sm:flex-row gap-2 justify-center items-center">
+          <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <input 
               v-model="filterDate"
               type="date" 
-              class="w-[150px] bg-gray-50 border-2 border-gray-100 rounded-xl p-2 text-sm focus:border-orange-400 outline-none transition-all h-[44px]"
+              class="w-full sm:w-[180px] bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all h-[44px]"
             >
             <div class="flex gap-2">
               <button @click="applyFilter" class="btn-primary">查询</button>
@@ -148,7 +149,7 @@ const bgStyle = computed(() => {
       <div class="text-center mt-12">
         <NuxtLink 
           to="/admin" 
-          class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-xl inline-block hover:scale-105 transition-transform"
+          class="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-2xl font-bold shadow-[0_10px_30px_rgba(16,185,129,0.4)] inline-block hover:scale-105 hover:brightness-110 transition-all"
         >
           管理后台
         </NuxtLink>
@@ -159,9 +160,9 @@ const bgStyle = computed(() => {
 
 <style scoped>
 .btn-primary { 
-  @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-[#fbbf24] text-[#78350f] shadow-[0_4px_0_#d97706] active:translate-y-[2px] active:shadow-[0_2px_0_#d97706];
+  @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-amber-300 to-orange-400 text-orange-900 shadow-[0_10px_20px_rgba(251,146,60,0.45)] hover:brightness-105 active:translate-y-[1px];
 }
 .btn-danger {
-  @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#f87171] text-white shadow-[0_4px_0_#b91c1c] active:translate-y-[2px] active:shadow-[0_2px_0_#b91c1c];
+  @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-rose-400 to-red-500 text-white shadow-[0_10px_20px_rgba(244,63,94,0.35)] hover:brightness-105 active:translate-y-[1px];
 }
 </style>
