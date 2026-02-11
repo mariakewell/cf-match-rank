@@ -1,39 +1,38 @@
 import { defineEventHandler, readBody, createError } from 'h3';
 import { useDb } from '~/server/utils/db';
 import { matches } from '~/shared/database/schema';
+import { checkAuth } from '~/server/utils/auth';
+import { eq } from 'drizzle-orm';
 
 export default defineEventHandler(async (event) => {
-  // 1. Auth Check (Simple shared secret/cookie check would go here)
-  
-  // 2. Parse Body
-  const body = await readBody(event) as any;
+  checkAuth(event);
+  const body = await readBody<any>(event);
   const db = useDb(event);
 
-  // 3. Validation (Zod is recommended here in production)
-  if (!body.p1Id || !body.p2Id || !body.group) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing fields' });
-  }
+  if (!body.group) throw createError({ statusCode: 400, statusMessage: "请选择组别" });
+  if (!body.p1Id || !body.p2Id) throw createError({ statusCode: 400, statusMessage: "请选择两位选手" });
+  if (body.p1Id === body.p2Id) throw createError({ statusCode: 400, statusMessage: "不能选同一个人" });
 
-  // 4. Batch Execution for Performance
-  // Even if we are just inserting one match now, using batch allows us 
-  // to easily add "Audit Logs" or "Update Player Last Active" in the same round-trip later.
+  const matchData = {
+    date: body.date || new Date().toISOString().split('T')[0],
+    group: body.group,
+    p1Id: Number(body.p1Id),
+    p2Id: Number(body.p2Id),
+    s1: Number(body.s1 || 0),
+    s2: Number(body.s2 || 0),
+    createdAt: new Date()
+  };
+
   try {
-    const result = await db.batch([
-      db.insert(matches).values({
-        date: body.date,
-        group: body.group,
-        p1Id: Number(body.p1Id),
-        p2Id: Number(body.p2Id),
-        s1: Number(body.s1),
-        s2: Number(body.s2),
-        createdAt: new Date()
-      })
-      // Future: db.insert(auditLogs).values(...)
-    ]);
-    
-    return { success: true, id: result[0].meta.last_row_id };
+    if (body.id) {
+        // Update
+        await db.update(matches).set(matchData).where(eq(matches.id, body.id));
+    } else {
+        // Create
+        await db.insert(matches).values(matchData);
+    }
+    return { success: true };
   } catch (e) {
-    console.error(e);
     throw createError({ statusCode: 500, statusMessage: 'Database Error' });
   }
 });

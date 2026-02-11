@@ -3,6 +3,7 @@ import { relations } from 'drizzle-orm';
 
 // --- Tables ---
 
+// Used for global config (title, notice, background) AND global groups list
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
@@ -11,8 +12,6 @@ export const settings = sqliteTable('settings', {
 export const players = sqliteTable('players', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
-  // Storing groups as JSON string for simplicity in migration, 
-  // but logically indexing names for search performance
   groups: text('groups', { mode: 'json' }).$type<string[]>().notNull(), 
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(new Date()),
 }, (table) => ({
