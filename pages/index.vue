@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted } from 'vue';
+
 const { show } = useToast();
 
 // Fetch all data raw
@@ -7,17 +9,21 @@ const { data } = await useFetch('/api/data');
 // Client-side State
 const filterDate = ref('');
 const displayDate = ref('');
+const selectedGroup = ref('');
+const groupQuery = ref('');
+const showGroupOptions = ref(false);
+const groupSelectorRef = ref<HTMLElement | null>(null);
 
 // Computation Logic (Ported from Worker)
 const standings = computed(() => {
   if (!data.value) return {};
-  
+
   const rawMatches = data.value.matches;
   const rawPlayers = data.value.players;
   const rawGroups = data.value.groups;
-  
+
   // Filter matches
-  const filteredMatches = filterDate.value 
+  const filteredMatches = filterDate.value
     ? rawMatches.filter(m => m.date === filterDate.value)
     : rawMatches;
 
@@ -29,9 +35,9 @@ const standings = computed(() => {
   rawPlayers.forEach(p => {
     p.groups.forEach(g => {
       if (!result[g]) result[g] = [];
-      result[g].push({ 
-        ...p, 
-        score: 0, matches: 0, wins: 0, draws: 0, losses: 0 
+      result[g].push({
+        ...p,
+        score: 0, matches: 0, wins: 0, draws: 0, losses: 0
       });
     });
   });
@@ -40,16 +46,16 @@ const standings = computed(() => {
   filteredMatches.forEach(m => {
     const groupName = m.group;
     if (!result[groupName]) return;
-    
+
     const p1 = result[groupName].find(p => p.id === m.p1_id);
     const p2 = result[groupName].find(p => p.id === m.p2_id);
-    
+
     if (p1 && p2) {
       p1.score += m.s1;
       p2.score += m.s2;
       p1.matches += 1;
       p2.matches += 1;
-      
+
       if (m.s1 > m.s2) p1.wins++;
       else if (m.s1 < m.s2) p2.wins++;
       else { p1.draws++; p2.draws++; }
@@ -67,20 +73,103 @@ const standings = computed(() => {
   return result;
 });
 
+const groupOptions = computed(() => data.value?.groups ?? []);
+
+const filteredGroupOptions = computed(() => {
+  const query = groupQuery.value.trim().toLowerCase();
+  if (!query) return groupOptions.value;
+
+  return groupOptions.value.filter(group => group.toLowerCase().includes(query));
+});
+
+const displayedStandings = computed(() => {
+  if (!selectedGroup.value) return [];
+  return standings.value[selectedGroup.value] ?? [];
+});
+
+const selectGroup = (group: string) => {
+  selectedGroup.value = group;
+  groupQuery.value = group;
+  showGroupOptions.value = false;
+};
+
+const openGroupOptions = () => {
+  showGroupOptions.value = true;
+};
+
+const toggleGroupOptions = () => {
+  showGroupOptions.value = !showGroupOptions.value;
+};
+
+const handleGroupInput = () => {
+  showGroupOptions.value = true;
+
+  const query = groupQuery.value.trim();
+  const exactMatch = groupOptions.value.find(group => group === query);
+  if (exactMatch) {
+    selectedGroup.value = exactMatch;
+    return;
+  }
+
+  const firstMatch = filteredGroupOptions.value[0];
+  if (firstMatch) selectedGroup.value = firstMatch;
+};
+
 const applyFilter = () => {
+  if (!selectedGroup.value) {
+    show('请先选择组别', 'error');
+    return;
+  }
+
   if (!filterDate.value) {
     show('请先选择日期', 'error');
     return;
   }
+
   displayDate.value = filterDate.value;
-  show(`已更新为 ${filterDate.value} 的数据`);
+  show(`已更新 ${selectedGroup.value} 在 ${filterDate.value} 的积分`);
 };
 
 const resetFilter = () => {
   filterDate.value = '';
   displayDate.value = '';
-  window.location.href = '/';
+
+  if (groupOptions.value.length > 0) {
+    selectGroup(groupOptions.value[0]);
+  }
+
+  show('已恢复默认筛选');
 };
+
+const handleOutsideClick = (event: MouseEvent) => {
+  if (!groupSelectorRef.value) return;
+  if (groupSelectorRef.value.contains(event.target as Node)) return;
+  showGroupOptions.value = false;
+};
+
+watch(
+  () => groupOptions.value,
+  (groups) => {
+    if (!groups.length) {
+      selectedGroup.value = '';
+      groupQuery.value = '';
+      return;
+    }
+
+    if (!selectedGroup.value || !groups.includes(selectedGroup.value)) {
+      selectGroup(groups[0]);
+    }
+  },
+  { immediate: true }
+);
+
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleOutsideClick);
+});
 
 const bgStyle = computed(() => {
   if (data.value?.settings?.background) {
@@ -110,23 +199,53 @@ const bgStyle = computed(() => {
         </div>
       </header>
 
-      <!-- Filter Card -->
-      <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-5 mb-8 max-w-xl mx-auto">
-        <div class="flex flex-col gap-3">
-          <div class="text-slate-600 font-bold text-sm text-center">
-            {{ displayDate ? `📅 正在查看 ${displayDate} 的积分:` : '📅 查看特定日期积分' }}
-          </div>
-          <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <input 
-              v-model="filterDate"
-              type="date" 
-              class="w-full sm:w-[180px] bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all h-[44px]"
+      <!-- Score Viewer Card -->
+      <div class="score-viewer-card bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-4 mb-8 mx-auto">
+        <div class="text-slate-600 font-bold text-sm text-center mb-3">
+          {{ displayDate ? `📅 ${selectedGroup} · ${displayDate} 积分查看` : `📅 积分查看${selectedGroup ? ` · ${selectedGroup}` : ''}` }}
+        </div>
+
+        <div class="controls-row compact-controls">
+          <div ref="groupSelectorRef" class="relative fixed-input">
+            <input
+              v-model="groupQuery"
+              type="text"
+              placeholder="输入或选择组别"
+              class="field-input pr-11 fixed-input"
+              @focus="openGroupOptions"
+              @input="handleGroupInput"
             >
-            <div class="flex gap-2">
-              <button @click="applyFilter" class="btn-primary">查询</button>
-              <button @click="resetFilter" class="btn-danger">全部</button>
+            <button type="button" class="group-toggle" @click="toggleGroupOptions">
+              ▾
+            </button>
+
+            <div
+              v-if="showGroupOptions"
+              class="absolute z-20 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
+            >
+              <button
+                v-for="group in filteredGroupOptions"
+                :key="group"
+                type="button"
+                class="group-option"
+                @click="selectGroup(group)"
+              >
+                {{ group }}
+              </button>
+              <div v-if="filteredGroupOptions.length === 0" class="px-3 py-2 text-sm text-slate-400">
+                无匹配组别
+              </div>
             </div>
           </div>
+
+          <input
+            v-model="filterDate"
+            type="date"
+            class="field-input fixed-input"
+          >
+
+          <button @click="applyFilter" class="btn-primary action-btn">查询</button>
+          <button @click="resetFilter" class="btn-danger action-btn">全部</button>
         </div>
       </div>
 
@@ -135,20 +254,18 @@ const bgStyle = computed(() => {
         <div v-for="i in 2" :key="i" class="h-64 bg-gray-200 rounded-3xl animate-pulse"></div>
       </div>
 
-      <!-- Grid -->
-      <div v-else class="rank-grid">
-        <RankingLeaderboardCard 
-          v-for="group in data.groups" 
-          :key="group"
-          :group-name="group"
-          :players="standings[group]"
+      <!-- Leaderboard -->
+      <div v-else class="max-w-xl mx-auto">
+        <RankingLeaderboardCard
+          :group-name="selectedGroup"
+          :players="displayedStandings"
         />
       </div>
 
       <!-- Footer -->
       <div class="text-center mt-12">
-        <NuxtLink 
-          to="/admin" 
+        <NuxtLink
+          to="/admin"
           class="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-2xl font-bold shadow-[0_10px_30px_rgba(16,185,129,0.4)] inline-block hover:scale-105 hover:brightness-110 transition-all"
         >
           管理后台
@@ -159,10 +276,48 @@ const bgStyle = computed(() => {
 </template>
 
 <style scoped>
-.btn-primary { 
+
+.score-viewer-card {
+  width: fit-content;
+  max-width: min(100%, 640px);
+}
+
+.controls-row {
+  @apply flex flex-wrap sm:flex-nowrap gap-2 justify-center items-center;
+}
+
+.compact-controls {
+  @apply w-fit max-w-full mx-auto;
+}
+
+.fixed-input {
+  width: 150px;
+  min-width: 150px;
+}
+
+.action-btn {
+  width: 100px;
+  min-width: 100px;
+  @apply flex-none;
+}
+
+.btn-primary {
   @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-amber-300 to-orange-400 text-orange-900 shadow-[0_10px_20px_rgba(251,146,60,0.45)] hover:brightness-105 active:translate-y-[1px];
 }
+
 .btn-danger {
   @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-rose-400 to-red-500 text-white shadow-[0_10px_20px_rgba(244,63,94,0.35)] hover:brightness-105 active:translate-y-[1px];
+}
+
+.field-input {
+  @apply w-full bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all h-[44px];
+}
+
+.group-toggle {
+  @apply absolute right-0 top-0 h-[44px] w-10 text-slate-500 hover:text-slate-700;
+}
+
+.group-option {
+  @apply w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-sky-50 transition-colors;
 }
 </style>
