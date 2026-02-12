@@ -262,6 +262,23 @@ const bgStyle = computed(() => {
   @apply flex flex-wrap gap-3 justify-center;
 }
 
+@media (max-width: 767px) {
+  .controls-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .control-item,
+  .group-control,
+  .date-control {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    inline-size: auto;
+  }
+}
+
 .control-item {
   @apply flex-none;
   min-width: 150px;

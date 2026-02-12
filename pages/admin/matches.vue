@@ -5,6 +5,7 @@ const { show } = useToast();
 const { data, refresh } = await useFetch('/api/data');
 
 const today = new Date().toISOString().split('T')[0];
+const uploadInputRef = ref<HTMLInputElement | null>(null);
 const form = reactive({
   date: today,
   group: '',
@@ -85,6 +86,32 @@ async function deleteSelectedDate() {
     show(e.message || '删除失败', 'error');
   }
 }
+
+// 打开 CSV 文件选择器。
+function openUploadDialog() {
+  uploadInputRef.value?.click();
+}
+
+// 上传 CSV 文件并批量导入比赛记录。
+async function importCsv(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch('/api/match/import', { method: 'POST', body: fd });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(text || '上传失败');
+    show(text || '上传成功');
+    await refresh();
+  } catch (e: any) {
+    show(e.message || '上传失败', 'error');
+  } finally {
+    target.value = '';
+  }
+}
 </script>
 
 <template>
@@ -100,7 +127,11 @@ async function deleteSelectedDate() {
     <NuxtLink to="/admin" class="btn-primary mb-4 no-underline">返回导航</NuxtLink>
 
     <div class="card p-6 border-l-8 border-l-green-400">
-      <h2 class="font-bold text-xl mb-4 text-green-600">📝 录入新比分</h2>
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <h2 class="font-bold text-xl text-green-600">📝 录入新比分</h2>
+        <button type="button" class="btn-upload text-sm" @click="openUploadDialog">📤 上传</button>
+        <input ref="uploadInputRef" type="file" accept=".csv,text/csv" class="hidden" @change="importCsv">
+      </div>
       <form @submit.prevent="saveMatch" class="space-y-4">
         <div class="flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[140px]"><label class="text-xs font-bold text-gray-400">日期</label><input v-model="form.date" type="date" class="input-field"></div>
@@ -141,6 +172,7 @@ async function deleteSelectedDate() {
 .btn-primary { @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-[#fbbf24] text-[#78350f] shadow-[0_4px_0_#d97706] active:translate-y-[2px] active:shadow-[0_2px_0_#d97706]; }
 .btn-danger { @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#f87171] text-white shadow-[0_4px_0_#b91c1c] active:translate-y-[2px] active:shadow-[0_2px_0_#b91c1c]; }
 .btn-success { @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#10b981] text-white shadow-[0_4px_0_#059669] active:translate-y-[2px] active:shadow-[0_2px_0_#059669]; }
+.btn-upload { @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#3b82f6] text-white shadow-[0_4px_0_#1d4ed8] active:translate-y-[2px] active:shadow-[0_2px_0_#1d4ed8]; }
 .input-field { @apply w-full bg-gray-50 border-2 rounded-lg p-2 h-[44px]; }
 .card { @apply bg-white rounded-[20px] shadow-[0_8px_0_#d1d5db] border-2 border-[#f3f4f6]; }
 </style>
