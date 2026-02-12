@@ -30,6 +30,7 @@ const standings = computed(() => {
     players: data.value.players,
     matches: filteredMatches,
     rankingRules: data.value.settings.rankingRules,
+    rankingRuleEnabled: data.value.settings.rankingRuleEnabled,
   });
 });
 

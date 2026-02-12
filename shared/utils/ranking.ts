@@ -1,4 +1,5 @@
 export type RankingRule = 'score' | 'wins' | 'diff' | 'headToHead';
+export type RankingRuleEnabled = Partial<Record<RankingRule, boolean>>;
 
 export const DEFAULT_RANKING_RULES: RankingRule[] = ['score', 'wins', 'diff', 'headToHead'];
 
@@ -33,6 +34,7 @@ interface BuildStandingInput {
   players: PlayerRecord[];
   matches: MatchRecord[];
   rankingRules?: RankingRule[];
+  rankingRuleEnabled?: RankingRuleEnabled;
 }
 
 interface HeadToHeadStat {
@@ -46,9 +48,17 @@ interface HeadToHeadStat {
 
 function normalizeRules(rules?: RankingRule[]) {
   if (!rules?.length) return DEFAULT_RANKING_RULES;
-  const deduped = rules.filter((rule, idx) => rules.indexOf(rule) === idx);
+  const deduped = rules.filter((rule, idx) => rules.indexOf(rule) === idx && DEFAULT_RANKING_RULES.includes(rule));
   const merged = [...deduped, ...DEFAULT_RANKING_RULES.filter((rule) => !deduped.includes(rule))];
   return merged;
+}
+
+export function buildActiveRankingRules(rules?: RankingRule[], rankingRuleEnabled?: RankingRuleEnabled): RankingRule[] {
+  const normalizedRules = normalizeRules(rules);
+  return normalizedRules.filter((rule, idx) => {
+    if (idx === 0) return true;
+    return rankingRuleEnabled?.[rule] !== false;
+  });
 }
 
 function getHeadToHeadStat(groupMatches: MatchRecord[], idA: number, idB: number): HeadToHeadStat {
@@ -88,7 +98,7 @@ function createComparator(groupMatches: MatchRecord[], rules: RankingRule[]) {
   };
 }
 
-export function buildStandings({ groups, players, matches, rankingRules }: BuildStandingInput) {
+export function buildStandings({ groups, players, matches, rankingRules, rankingRuleEnabled }: BuildStandingInput) {
   const result: Record<string, StandingItem[]> = {};
   groups.forEach((group) => {
     result[group] = [];
@@ -133,7 +143,7 @@ export function buildStandings({ groups, players, matches, rankingRules }: Build
     }
   });
 
-  const rules = normalizeRules(rankingRules);
+  const rules = buildActiveRankingRules(rankingRules, rankingRuleEnabled);
 
   Object.keys(result).forEach((group) => {
     result[group].forEach((item) => {

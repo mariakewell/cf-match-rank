@@ -3,7 +3,7 @@ import { settings } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 import { loadState } from '~/server/utils/state';
-import { DEFAULT_RANKING_RULES, type RankingRule } from '~/shared/utils/ranking';
+import { DEFAULT_RANKING_RULES, type RankingRule, type RankingRuleEnabled } from '~/shared/utils/ranking';
 
 /**
  * 更新全局站点配置（标题、公告、背景图）。
@@ -14,6 +14,7 @@ export default defineEventHandler(async (event) => {
   const state = await loadState(event);
   const rankingRulesInput = formData.get('rankingRules')?.toString();
   let rankingRules: RankingRule[] = state.settings.rankingRules;
+  let rankingRuleEnabled: RankingRuleEnabled = state.settings.rankingRuleEnabled || {};
 
   if (rankingRulesInput) {
     try {
@@ -26,11 +27,31 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const rankingRuleEnabledInput = formData.get('rankingRuleEnabled')?.toString();
+  if (rankingRuleEnabledInput) {
+    try {
+      const parsedEnabled = JSON.parse(rankingRuleEnabledInput);
+      if (parsedEnabled && typeof parsedEnabled === 'object') {
+        const nextEnabled: RankingRuleEnabled = {};
+        DEFAULT_RANKING_RULES.forEach((rule) => {
+          const value = (parsedEnabled as Record<string, unknown>)[rule];
+          if (typeof value === 'boolean') {
+            nextEnabled[rule] = value;
+          }
+        });
+        rankingRuleEnabled = nextEnabled;
+      }
+    } catch {
+      rankingRuleEnabled = state.settings.rankingRuleEnabled || {};
+    }
+  }
+
   const nextSettings = {
     title: formData.get('title')?.toString().trim() || state.settings.title,
     notice: formData.get('notice')?.toString().trim() || state.settings.notice,
     background: formData.get('background')?.toString().trim() || state.settings.background,
     rankingRules,
+    rankingRuleEnabled,
   };
 
   const db = useDb(event);

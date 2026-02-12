@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 本文件为页面交互逻辑，所有函数用途均使用中文注释。
-import { DEFAULT_RANKING_RULES, type RankingRule } from '~/shared/utils/ranking';
+import { DEFAULT_RANKING_RULES, type RankingRule, type RankingRuleEnabled } from '~/shared/utils/ranking';
 
 const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
@@ -8,6 +8,12 @@ const { show } = useToast();
 
 const form = reactive({ title: '', notice: '', background: '' });
 const rankingRules = ref<RankingRule[]>([...DEFAULT_RANKING_RULES]);
+const rankingRuleEnabled = ref<RankingRuleEnabled>({
+  score: true,
+  wins: true,
+  diff: true,
+  headToHead: true,
+});
 
 const ruleMeta: Record<RankingRule, string> = {
   score: '总积分',
@@ -25,6 +31,14 @@ watchEffect(() => {
     rankingRules.value = data.value.settings.rankingRules?.length
       ? [...data.value.settings.rankingRules]
       : [...DEFAULT_RANKING_RULES];
+
+    const sourceEnabled = data.value.settings.rankingRuleEnabled || {};
+    rankingRuleEnabled.value = {
+      score: sourceEnabled.score !== false,
+      wins: sourceEnabled.wins !== false,
+      diff: sourceEnabled.diff !== false,
+      headToHead: sourceEnabled.headToHead !== false,
+    };
   }
 });
 
@@ -44,6 +58,20 @@ const moveRuleDown = (index: number) => {
   rankingRules.value = next;
 };
 
+/** 切换某条规则是否启用（首条规则固定启用）。 */
+const toggleRuleEnabled = (rule: RankingRule, enabled: boolean) => {
+  rankingRuleEnabled.value = {
+    ...rankingRuleEnabled.value,
+    [rule]: enabled,
+  };
+};
+
+/** 从 change 事件中读取启用状态。 */
+const handleRuleEnabledChange = (rule: RankingRule, event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  toggleRuleEnabled(rule, !!target?.checked);
+};
+
 // 保存全局设置。
 async function save() {
   const fd = new FormData();
@@ -51,6 +79,7 @@ async function save() {
   fd.append('notice', form.notice);
   fd.append('background', form.background);
   fd.append('rankingRules', JSON.stringify(rankingRules.value));
+  fd.append('rankingRuleEnabled', JSON.stringify(rankingRuleEnabled.value));
 
   const resp = await fetch('/api/settings', { method: 'POST', body: fd });
   const text = await resp.text();
@@ -88,7 +117,16 @@ async function save() {
               class="flex items-center justify-between border rounded-lg px-3 py-2 bg-gray-50"
             >
               <div class="font-semibold text-gray-700">{{ index + 1 }}. {{ ruleMeta[rule] }}</div>
-              <div class="flex gap-2">
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1 text-xs font-semibold text-gray-600">
+                  <input
+                    type="checkbox"
+                    :checked="index === 0 ? true : rankingRuleEnabled[rule] !== false"
+                    :disabled="index === 0"
+                    @change="handleRuleEnabledChange(rule, $event)"
+                  >
+                  {{ index === 0 ? '必选' : '启用' }}
+                </label>
                 <button type="button" class="move-btn" :disabled="index === 0" @click="moveRuleUp(index)">上移</button>
                 <button type="button" class="move-btn" :disabled="index === rankingRules.length - 1" @click="moveRuleDown(index)">下移</button>
               </div>

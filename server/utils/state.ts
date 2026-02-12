@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { matches, players, settings } from '~/shared/database/schema';
-import { buildStandings, DEFAULT_RANKING_RULES, type RankingRule } from '~/shared/utils/ranking';
+import { buildStandings, DEFAULT_RANKING_RULES, type RankingRule, type RankingRuleEnabled } from '~/shared/utils/ranking';
 import { useDb } from '~/server/utils/db';
 
 /**
@@ -13,6 +13,12 @@ export const DEFAULT_DATA = {
     notice: '友谊第一，比赛第二！加油！',
     background: '',
     rankingRules: DEFAULT_RANKING_RULES,
+    rankingRuleEnabled: {
+      score: true,
+      wins: true,
+      diff: true,
+      headToHead: true,
+    } as RankingRuleEnabled,
   },
   groups: ['U8 红球组', 'U10 橙球组'],
   players: [
@@ -109,10 +115,12 @@ async function seedDefaultData(event: any) {
  */
 export function calculateStandings(state: AppDbState) {
   const rankingRules = (state.settings.rankingRules as RankingRule[]) || DEFAULT_RANKING_RULES;
+  const rankingRuleEnabled = (state.settings.rankingRuleEnabled as RankingRuleEnabled) || DEFAULT_DATA.settings.rankingRuleEnabled;
   return buildStandings({
     groups: state.groups,
     players: state.players,
     matches: state.matches,
     rankingRules,
+    rankingRuleEnabled,
   });
 }
