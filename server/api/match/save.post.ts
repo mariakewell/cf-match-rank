@@ -4,6 +4,9 @@ import { matches } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 
+/**
+ * 新增或更新比赛比分记录。
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

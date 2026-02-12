@@ -1,3 +1,4 @@
+<!-- 中文注释说明：应用根组件，负责挂载页面、布局与全局提示组件。 -->
 <template>
   <div class="font-sans antialiased text-gray-900 min-h-screen selection:bg-orange-200 selection:text-orange-900">
     <NuxtLoadingIndicator color="#f97316" />

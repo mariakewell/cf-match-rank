@@ -5,6 +5,9 @@ import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 import { loadState } from '~/server/utils/state';
 
+/**
+ * 删除组别，并同步移除所有球员身上的该组别标签。
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

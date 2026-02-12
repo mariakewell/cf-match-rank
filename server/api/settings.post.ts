@@ -4,6 +4,9 @@ import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 import { loadState } from '~/server/utils/state';
 
+/**
+ * 更新全局站点配置（标题、公告、背景图）。
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
@@ -7,6 +8,7 @@ const playerForm = reactive({ id: '', name: '', groups: [] as string[] });
 const searchInput = ref('');
 const activeGroup = ref('');
 
+/** 按姓名与组别筛选球员列表。 */
 const filteredPlayers = computed(() => {
   if (!data.value) return [];
   const q = searchInput.value.trim().toLowerCase();
@@ -17,6 +19,7 @@ const filteredPlayers = computed(() => {
   });
 });
 
+// 通用表单提交函数：将对象转 FormData 后发送到后端。
 async function postForm(url: string, payload: Record<string, any>) {
   const fd = new FormData();
   Object.entries(payload).forEach(([k, v]) => {
@@ -32,6 +35,7 @@ async function postForm(url: string, payload: Record<string, any>) {
   return text;
 }
 
+// 保存球员信息并刷新列表。
 async function savePlayer() {
   try {
     const text = await postForm('/api/player/save', playerForm as any);
@@ -45,6 +49,7 @@ async function savePlayer() {
   }
 }
 
+// 删除球员。
 async function deletePlayer(id: number) {
   try {
     const text = await postForm('/api/player/delete', { id });
@@ -55,6 +60,7 @@ async function deletePlayer(id: number) {
   }
 }
 
+// 新增组别。
 async function addGroup(name: string) {
   try {
     const text = await postForm('/api/group/add', { name });
@@ -65,6 +71,7 @@ async function addGroup(name: string) {
   }
 }
 
+// 删除组别。
 async function deleteGroup(name: string) {
   try {
     const text = await postForm('/api/group/delete', { name });
@@ -76,15 +83,18 @@ async function deleteGroup(name: string) {
 }
 
 const newGroup = ref('');
+/** 点击组别后仅展示该组球员。 */
 const filterByGroup = (groupName: string) => {
   searchInput.value = '';
   activeGroup.value = groupName;
   show(`正在查看: ${groupName}`);
 };
+/** 清空球员筛选条件并展示全部。 */
 const clearPlayerFilter = () => {
   activeGroup.value = '';
   searchInput.value = '';
 };
+/** 将球员信息回填到表单，进入编辑态。 */
 const editPlayer = (p: any) => {
   playerForm.id = String(p.id);
   playerForm.name = p.name;

@@ -4,6 +4,9 @@ import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 import { loadState } from '~/server/utils/state';
 
+/**
+ * 新增组别并写回 settings 表中的 groups 配置。
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

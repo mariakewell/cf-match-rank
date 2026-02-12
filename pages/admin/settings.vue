@@ -1,9 +1,11 @@
 <script setup lang="ts">
+// 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
 const form = reactive({ title: '', notice: '', background: '' });
+/** 当远端设置变化时，同步到本地编辑表单。 */
 watchEffect(() => {
   if (data.value) {
     form.title = data.value.settings.title;
@@ -12,6 +14,7 @@ watchEffect(() => {
   }
 });
 
+// 保存全局设置。
 async function save() {
   const fd = new FormData();
   fd.append('title', form.title);

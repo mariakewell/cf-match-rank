@@ -1,26 +1,25 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
-import { relations } from 'drizzle-orm';
 
-// --- Tables ---
-
-// Used for global config (title, notice, background) AND global groups list
+// 配置表：存放全局配置（标题、公告、背景）与组别列表。
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
 
+// 球员表：记录球员基础信息与所属组别。
 export const players = sqliteTable('players', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
-  groups: text('groups', { mode: 'json' }).$type<string[]>().notNull(), 
+  groups: text('groups', { mode: 'json' }).$type<string[]>().notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(new Date()),
 }, (table) => ({
   nameIdx: index('name_idx').on(table.name),
 }));
 
+// 比赛表：记录比赛对阵与比分数据。
 export const matches = sqliteTable('matches', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  date: text('date').notNull(), // ISO Date String YYYY-MM-DD
+  date: text('date').notNull(), // 日期格式：年-月-日
   group: text('group').notNull(),
   p1Id: integer('p1_id').notNull().references(() => players.id),
   p2Id: integer('p2_id').notNull().references(() => players.id),
@@ -34,7 +33,7 @@ export const matches = sqliteTable('matches', {
   p2Idx: index('p2_idx').on(table.p2Id),
 }));
 
-// --- Types ---
+// 数据库推导类型，供业务代码复用。
 export type Player = typeof players.$inferSelect;
 export type NewPlayer = typeof players.$inferInsert;
 export type Match = typeof matches.$inferSelect;

@@ -1,13 +1,18 @@
 <script setup lang="ts">
+// 当前球员详情页依赖 URL 参数中的 id。
 const route = useRoute();
 const id = Number(route.params.id);
+// 拉取全量数据后在前端做筛选。
 const { data } = await useFetch('/api/data');
 
+// 历史记录筛选条件：日期 + 对手名。
 const filterDate = ref('');
 const filterOpponent = ref('');
 
+/** 当前球员对象。 */
 const player = computed(() => data.value?.players.find((p) => p.id === id));
 
+/** 当前球员的全部比赛（按日期倒序）。 */
 const allMatches = computed(() => {
   if (!data.value) return [];
   return data.value.matches
@@ -15,6 +20,7 @@ const allMatches = computed(() => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 });
 
+/** 基于筛选条件得到最终展示比赛。 */
 const matches = computed(() => {
   if (!data.value) return [];
   return allMatches.value.filter((m) => {
@@ -27,6 +33,7 @@ const matches = computed(() => {
   });
 });
 
+/** 统计胜平负数据，用于头部摘要展示。 */
 const stats = computed(() => {
   let wins = 0, draws = 0, losses = 0;
   allMatches.value.forEach((m) => {
@@ -39,6 +46,7 @@ const stats = computed(() => {
   return { total: allMatches.value.length, wins, draws, losses };
 });
 
+/** 根据比赛记录计算对手姓名。 */
 const getOpponentName = (m: any) => {
   const opId = m.p1_id === id ? m.p2_id : m.p1_id;
   return data.value?.players.find((p) => p.id === opId)?.name || '未知';

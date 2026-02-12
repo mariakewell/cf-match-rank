@@ -1,6 +1,7 @@
+// 中文注释说明：该配置文件用于项目构建/数据库生成流程。
 import { defineNuxtConfig } from 'nuxt/config'
 
-// https://nuxt.com/docs/api/configuration/nuxt-config
+// 框架配置说明见官方文档。
 export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
@@ -10,20 +11,20 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-02-11',
   nitro: {
     preset: 'cloudflare-pages',
-    // Define the D1 database binding for local dev and production
+    // 配置 D1 数据库绑定，供本地与生产环境使用
     experimental: {
       database: true
     }
   },
   runtimeConfig: {
-    // Private keys (server-side only)
+    // 私有配置（仅服务端可见）
     adminPassword: process.env.ADMIN_PASSWORD,
-    // Public keys (client-side)
+    // 公共配置（前端可读取）
     public: {
       siteTitle: '🎾 TennisRank Edge'
     }
   },
-  // Auto-import components from feature directories for Vertical Slice Architecture
+  // 按功能目录自动导入组件（贴合 Vertical Slice 架构）
   components: [
     { path: '~/features/ranking/components', prefix: 'Ranking' },
     { path: '~/features/match-manager/components', prefix: 'Match' },

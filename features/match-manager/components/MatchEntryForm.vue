@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 import { Loader2 } from 'lucide-vue-next';
 
 interface Player { id: number; name: string; groups: string[] }
@@ -20,13 +21,16 @@ const formData = reactive({
   s2: 0,
 });
 
+/** 根据已选组别返回可选球员。 */
 const availablePlayers = computed(() => {
   if (!formData.group) return [];
   return props.players.filter((p) => p.groups.includes(formData.group));
 });
 
+/** 校验表单是否可提交。 */
 const isValid = computed(() => formData.group && formData.p1_id && formData.p2_id && formData.p1_id !== formData.p2_id);
 
+// 提交比分表单并触发父组件刷新。
 async function submit() {
   if (!isValid.value) return;
   isLoading.value = true;

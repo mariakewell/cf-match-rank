@@ -2,6 +2,10 @@ import { sql } from 'drizzle-orm';
 import { matches, players, settings } from '~/shared/database/schema';
 import { useDb } from '~/server/utils/db';
 
+/**
+ * 系统默认数据。
+ * 当数据库为空时会自动初始化为该内容。
+ */
 export const DEFAULT_DATA = {
   settings: {
     title: '🎾 快乐网球积分赛',
@@ -19,6 +23,9 @@ export const DEFAULT_DATA = {
 
 export type AppDbState = typeof DEFAULT_DATA;
 
+/**
+ * 读取数据库并拼装前端所需的应用状态结构。
+ */
 export async function loadState(event: any): Promise<AppDbState> {
   const db = useDb(event);
 
@@ -31,23 +38,25 @@ export async function loadState(event: any): Promise<AppDbState> {
   let config = { ...DEFAULT_DATA.settings };
   let groups = [...DEFAULT_DATA.groups];
 
+  // 解析站点配置与组别配置，失败时回退默认值。
   allSettings.forEach((s) => {
     if (s.key === 'config') {
       try {
         config = { ...config, ...JSON.parse(s.value) };
       } catch {
-        // keep default
+        // 保持默认值
       }
     }
     if (s.key === 'groups') {
       try {
         groups = JSON.parse(s.value);
       } catch {
-        // keep default
+        // 保持默认值
       }
     }
   });
 
+  // 首次启动数据库为空时，自动写入初始化数据。
   if (allPlayers.length === 0 && allMatches.length === 0 && allSettings.length === 0) {
     await seedDefaultData(event);
     return loadState(event);
@@ -69,6 +78,9 @@ export async function loadState(event: any): Promise<AppDbState> {
   };
 }
 
+/**
+ * 向空库写入最小可用默认数据。
+ */
 async function seedDefaultData(event: any) {
   const db = useDb(event);
 
@@ -90,10 +102,14 @@ async function seedDefaultData(event: any) {
   }
 }
 
+/**
+ * 按组别计算积分榜（积分/胜平负/净胜分）。
+ */
 export function calculateStandings(state: AppDbState) {
   const standings: Record<string, any[]> = {};
   state.groups.forEach((g) => (standings[g] = []));
 
+  // 先把球员分配到各自组别并初始化统计字段。
   state.players.forEach((p) => {
     p.groups.forEach((g) => {
       if (!standings[g]) standings[g] = [];
@@ -101,6 +117,7 @@ export function calculateStandings(state: AppDbState) {
     });
   });
 
+  // 遍历比赛并累计双方数据。
   state.matches.forEach((m) => {
     const groupName = m.group;
     if (!standings[groupName]) return;
@@ -122,6 +139,7 @@ export function calculateStandings(state: AppDbState) {
     }
   });
 
+  // 补全负场并按“积分 > 胜场”排序。
   Object.keys(standings).forEach((g) => {
     standings[g].forEach((p) => {
       p.losses = p.matches - p.wins - p.draws;

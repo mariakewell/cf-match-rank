@@ -1,9 +1,14 @@
 import { createError, defineEventHandler, readFormData } from 'h3';
-import { and, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { players } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 
+/**
+ * 新增或更新球员信息。
+ * - 新增时写入姓名与所属组别
+ * - 更新时按 id 覆盖球员基础信息
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

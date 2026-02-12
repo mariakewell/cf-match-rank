@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 const auth = useCookie('auth');
 const { show } = useToast();
 const { data, refresh } = await useFetch('/api/data');
@@ -14,11 +15,13 @@ const form = reactive({
 });
 const filters = reactive({ date: '', player: '' });
 
+/** 根据当前表单组别筛选可选球员。 */
 const availablePlayers = computed(() => {
   if (!data.value || !form.group) return [];
   return data.value.players.filter((p) => p.groups.includes(form.group));
 });
 
+/** 根据日期与球员关键字过滤比赛记录。 */
 const filteredMatches = computed(() => {
   if (!data.value) return [];
   return data.value.matches.filter((m) => {
@@ -31,8 +34,10 @@ const filteredMatches = computed(() => {
   });
 });
 
+/** 根据球员 ID 获取姓名，用于表格展示。 */
 const getPlayerName = (id: number) => data.value?.players.find((p) => p.id === id)?.name || '未知';
 
+// 通用表单提交函数：将对象转 FormData 后发送到后端。
 async function postForm(url: string, payload: Record<string, any>) {
   const fd = new FormData();
   Object.entries(payload).forEach(([k, v]) => fd.append(k, String(v)));
@@ -42,6 +47,7 @@ async function postForm(url: string, payload: Record<string, any>) {
   return text;
 }
 
+// 保存比赛记录（新增/编辑共用）。
 async function saveMatch() {
   try {
     const text = await postForm('/api/match/save', form as any);
@@ -52,6 +58,7 @@ async function saveMatch() {
   }
 }
 
+// 删除单条比赛记录。
 async function deleteMatch(id: number) {
   try {
     const text = await postForm('/api/match/delete', { id });
@@ -62,6 +69,7 @@ async function deleteMatch(id: number) {
   }
 }
 
+// 按日期批量删除比赛。
 async function deleteSelectedDate() {
   if (!filters.date) {
     show('请先选择日期', 'error');

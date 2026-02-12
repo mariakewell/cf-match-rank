@@ -4,6 +4,9 @@ import { matches, players } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 
+/**
+ * 删除球员并清理其相关比赛。
+ */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const formData = await readFormData(event);

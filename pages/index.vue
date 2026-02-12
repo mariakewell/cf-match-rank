@@ -1,12 +1,13 @@
 <script setup lang="ts">
+// 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 import { onBeforeUnmount, onMounted } from 'vue';
 
 const { show } = useToast();
 
-// Fetch all data raw
+// 拉取全量数据（后续在前端筛选与计算）
 const { data } = await useFetch('/api/data');
 
-// Client-side State
+// 前端筛选与展示状态
 const filterDate = ref('');
 const displayDate = ref('');
 const selectedGroup = ref('');
@@ -15,7 +16,8 @@ const showGroupOptions = ref(false);
 const groupOptionMode = ref<'dropdown' | 'search'>('dropdown');
 const groupSelectorRef = ref<HTMLElement | null>(null);
 
-// Computation Logic (Ported from Worker)
+// 积分计算逻辑（从 Worker 迁移而来）
+/** 计算各组积分榜数据。 */
 const standings = computed(() => {
   if (!data.value) return {};
 
@@ -23,16 +25,16 @@ const standings = computed(() => {
   const rawPlayers = data.value.players;
   const rawGroups = data.value.groups;
 
-  // Filter matches
+  // 先按日期过滤比赛
   const filteredMatches = filterDate.value
     ? rawMatches.filter(m => m.date === filterDate.value)
     : rawMatches;
 
-  // Init Standings
+  // 初始化各组积分容器
   const result: Record<string, any[]> = {};
   rawGroups.forEach(g => result[g] = []);
 
-  // Map Players to Groups
+  // 将球员映射到所属组别并初始化统计字段
   rawPlayers.forEach(p => {
     p.groups.forEach(g => {
       if (!result[g]) result[g] = [];
@@ -43,7 +45,7 @@ const standings = computed(() => {
     });
   });
 
-  // Calculate Scores
+  // 根据比赛结果累计积分与胜平负
   filteredMatches.forEach(m => {
     const groupName = m.group;
     if (!result[groupName]) return;
@@ -63,7 +65,7 @@ const standings = computed(() => {
     }
   });
 
-  // Sort: Score desc, Wins desc
+  // 排序规则：先比积分，再比胜场
   Object.keys(result).forEach(g => {
     result[g].forEach(p => {
       p.losses = p.matches - p.wins - p.draws;
@@ -76,6 +78,7 @@ const standings = computed(() => {
 
 const groupOptions = computed(() => data.value?.groups ?? []);
 
+/** 按输入关键字过滤组别候选项。 */
 const filteredGroupOptions = computed(() => {
   const query = groupQuery.value.trim().toLowerCase();
   if (!query) return groupOptions.value;
@@ -83,32 +86,38 @@ const filteredGroupOptions = computed(() => {
   return groupOptions.value.filter(group => group.toLowerCase().includes(query));
 });
 
+/** 返回当前应展示的组别列表（下拉/搜索两种模式）。 */
 const visibleGroupOptions = computed(() => {
   if (groupOptionMode.value === 'dropdown') return groupOptions.value;
   return filteredGroupOptions.value;
 });
 
+/** 当前选中组别对应的积分榜。 */
 const displayedStandings = computed(() => {
   if (!selectedGroup.value) return [];
   return standings.value[selectedGroup.value] ?? [];
 });
 
+/** 选择组别并同步输入框文本。 */
 const selectGroup = (group: string) => {
   selectedGroup.value = group;
   groupQuery.value = group;
   showGroupOptions.value = false;
 };
 
+/** 打开组别下拉列表（非搜索模式）。 */
 const openGroupOptions = () => {
   groupOptionMode.value = 'dropdown';
   showGroupOptions.value = true;
 };
 
+/** 切换组别下拉列表显示状态。 */
 const toggleGroupOptions = () => {
   groupOptionMode.value = 'dropdown';
   showGroupOptions.value = !showGroupOptions.value;
 };
 
+/** 处理组别输入：进入搜索模式并自动定位可选组。 */
 const handleGroupInput = () => {
   groupOptionMode.value = 'search';
   showGroupOptions.value = true;
@@ -124,6 +133,7 @@ const handleGroupInput = () => {
   if (firstMatch) selectedGroup.value = firstMatch;
 };
 
+/** 应用筛选条件并刷新当前展示日期。 */
 const applyFilter = () => {
   if (!selectedGroup.value) {
     show('请先选择组别', 'error');
@@ -139,6 +149,7 @@ const applyFilter = () => {
   show(`已更新 ${selectedGroup.value} 在 ${filterDate.value} 的积分`);
 };
 
+/** 重置筛选条件并恢复默认组别。 */
 const resetFilter = () => {
   filterDate.value = '';
   displayDate.value = '';
@@ -150,6 +161,7 @@ const resetFilter = () => {
   show('已恢复默认筛选');
 };
 
+/** 点击组件外部时关闭组别下拉框。 */
 const handleOutsideClick = (event: MouseEvent) => {
   if (!groupSelectorRef.value) return;
   if (groupSelectorRef.value.contains(event.target as Node)) return;
@@ -172,14 +184,17 @@ watch(
   { immediate: true }
 );
 
+/** 页面挂载后注册全局点击监听。 */
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick);
 });
 
+/** 页面卸载前移除全局点击监听。 */
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick);
 });
 
+/** 根据后台配置生成页面背景样式。 */
 const bgStyle = computed(() => {
   if (data.value?.settings?.background) {
     return {
@@ -198,7 +213,7 @@ const bgStyle = computed(() => {
 <template>
   <div class="min-h-screen pb-24" :style="bgStyle">
     <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-8 md:pt-12">
-      <!-- Header -->
+      <!-- 页面头部 -->
       <header class="text-center mb-6 animate-fade-in-down" v-if="data">
         <h1 class="text-4xl md:text-6xl font-black text-white drop-shadow-[0_10px_30px_rgba(15,23,42,0.55)] mb-3 tracking-tight">
           {{ data.settings.title }}
@@ -208,7 +223,7 @@ const bgStyle = computed(() => {
         </div>
       </header>
 
-      <!-- Score Viewer Card -->
+      <!-- 积分查看卡片 -->
       <div class="score-viewer-card bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-4 mb-8 mx-auto">
         <div class="text-slate-600 font-bold text-sm text-center mb-3">
           {{ displayDate ? `📅 ${selectedGroup} · ${displayDate} 积分查看` : `📅 积分查看${selectedGroup ? ` · ${selectedGroup}` : ''}` }}
@@ -258,12 +273,12 @@ const bgStyle = computed(() => {
         </div>
       </div>
 
-      <!-- Loading -->
+      <!-- 加载态 -->
       <div v-if="!data" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div v-for="i in 2" :key="i" class="h-64 bg-gray-200 rounded-3xl animate-pulse"></div>
       </div>
 
-      <!-- Leaderboard -->
+      <!-- 积分榜区域 -->
       <div v-else class="max-w-xl mx-auto">
         <RankingLeaderboardCard
           :group-name="selectedGroup"
@@ -271,7 +286,7 @@ const bgStyle = computed(() => {
         />
       </div>
 
-      <!-- Footer -->
+      <!-- 页面底部 -->
       <div class="text-center mt-12">
         <NuxtLink
           to="/admin"
