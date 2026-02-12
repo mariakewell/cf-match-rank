@@ -203,7 +203,7 @@ const bgStyle = computed(() => {
 
             <div
               v-if="showGroupOptions"
-              class="absolute z-20 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
+              class="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
             >
               <button
                 v-for="group in visibleGroupOptions"
@@ -281,6 +281,8 @@ const bgStyle = computed(() => {
 .score-viewer-card {
   width: fit-content;
   max-width: min(100%, 760px);
+  position: relative; 
+  z-index: 10; 
 }
 
 @media (min-width: 768px) {
