@@ -170,7 +170,7 @@ const bgStyle = computed(() => {
 
 <template>
   <div class="min-h-screen pb-24" :style="bgStyle">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-8 md:pt-12">
+    <div class="max-w-7xl mx-auto px-6 sm:px-3 pt-6 md:pt-8">
       <!-- 页面头部 -->
       <header class="text-center mb-6 animate-fade-in-down" v-if="data">
         <h1 class="text-4xl md:text-5xl font-black text-orange-600 mb-2">
@@ -226,8 +226,8 @@ const bgStyle = computed(() => {
             class="field-input control-item date-control"
           >
 
-          <button @click="applyFilter" class="btn-primary control-item">查询</button>
-          <button @click="resetFilter" class="btn-danger control-item">全部</button>
+          <button @click="applyFilter" class="btn-primary control-item w-[80px] !min-w-0">查询</button>
+          <button @click="resetFilter" class="btn-danger control-item w-[80px] !min-w-0">全部</button>
         </div>
       </div>
 
