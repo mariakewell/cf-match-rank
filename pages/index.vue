@@ -268,7 +268,7 @@ const bgStyle = computed(() => {
 }
 
 .group-control {
-  width: 210px;
+  width: 160px;
 }
 
 .date-control {
