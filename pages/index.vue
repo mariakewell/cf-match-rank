@@ -12,6 +12,7 @@ const displayDate = ref('');
 const selectedGroup = ref('');
 const groupQuery = ref('');
 const showGroupOptions = ref(false);
+const groupOptionMode = ref<'dropdown' | 'search'>('dropdown');
 const groupSelectorRef = ref<HTMLElement | null>(null);
 
 // Computation Logic (Ported from Worker)
@@ -82,6 +83,11 @@ const filteredGroupOptions = computed(() => {
   return groupOptions.value.filter(group => group.toLowerCase().includes(query));
 });
 
+const visibleGroupOptions = computed(() => {
+  if (groupOptionMode.value === 'dropdown') return groupOptions.value;
+  return filteredGroupOptions.value;
+});
+
 const displayedStandings = computed(() => {
   if (!selectedGroup.value) return [];
   return standings.value[selectedGroup.value] ?? [];
@@ -94,14 +100,17 @@ const selectGroup = (group: string) => {
 };
 
 const openGroupOptions = () => {
+  groupOptionMode.value = 'dropdown';
   showGroupOptions.value = true;
 };
 
 const toggleGroupOptions = () => {
+  groupOptionMode.value = 'dropdown';
   showGroupOptions.value = !showGroupOptions.value;
 };
 
 const handleGroupInput = () => {
+  groupOptionMode.value = 'search';
   showGroupOptions.value = true;
 
   const query = groupQuery.value.trim();
@@ -200,13 +209,13 @@ const bgStyle = computed(() => {
       </header>
 
       <!-- Score Viewer Card -->
-      <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-4 mb-8 max-w-6xl mx-auto">
+      <div class="score-viewer-card bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-4 mb-8 mx-auto">
         <div class="text-slate-600 font-bold text-sm text-center mb-3">
           {{ displayDate ? `📅 ${selectedGroup} · ${displayDate} 积分查看` : `📅 积分查看${selectedGroup ? ` · ${selectedGroup}` : ''}` }}
         </div>
 
         <div class="controls-row">
-          <div ref="groupSelectorRef" class="relative control-item">
+          <div ref="groupSelectorRef" class="relative control-item group-control">
             <input
               v-model="groupQuery"
               type="text"
@@ -224,7 +233,7 @@ const bgStyle = computed(() => {
               class="absolute z-20 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
             >
               <button
-                v-for="group in filteredGroupOptions"
+                v-for="group in visibleGroupOptions"
                 :key="group"
                 type="button"
                 class="group-option"
@@ -232,7 +241,7 @@ const bgStyle = computed(() => {
               >
                 {{ group }}
               </button>
-              <div v-if="filteredGroupOptions.length === 0" class="px-3 py-2 text-sm text-slate-400">
+              <div v-if="visibleGroupOptions.length === 0" class="px-3 py-2 text-sm text-slate-400">
                 无匹配组别
               </div>
             </div>
@@ -241,7 +250,7 @@ const bgStyle = computed(() => {
           <input
             v-model="filterDate"
             type="date"
-            class="field-input control-item"
+            class="field-input control-item date-control"
           >
 
           <button @click="applyFilter" class="btn-primary control-item">查询</button>
@@ -281,8 +290,31 @@ const bgStyle = computed(() => {
 }
 
 .control-item {
-  @apply flex-1;
+  @apply flex-none;
   min-width: 150px;
+}
+
+.group-control {
+  width: 210px;
+}
+
+.date-control {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  inline-size: 150px;
+}
+
+.score-viewer-card {
+  width: fit-content;
+  max-width: min(100%, 760px);
+}
+
+@media (min-width: 768px) {
+  .controls-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
 }
 
 .btn-primary {
