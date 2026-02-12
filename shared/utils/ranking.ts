@@ -81,19 +81,26 @@ function getHeadToHeadStat(groupMatches: MatchRecord[], idA: number, idB: number
   }, { winsA: 0, winsB: 0, diffA: 0, diffB: 0, scoreA: 0, scoreB: 0 });
 }
 
+function compareByRankingRules(a: StandingItem, b: StandingItem, groupMatches: MatchRecord[], rules: RankingRule[]) {
+  for (const rule of rules) {
+    if (rule === 'score' && a.score !== b.score) return b.score - a.score;
+    if (rule === 'wins' && a.wins !== b.wins) return b.wins - a.wins;
+    if (rule === 'diff' && a.diff !== b.diff) return b.diff - a.diff;
+    if (rule === 'headToHead') {
+      const h2h = getHeadToHeadStat(groupMatches, a.id, b.id);
+      if (h2h.winsA !== h2h.winsB) return h2h.winsB - h2h.winsA;
+      if (h2h.diffA !== h2h.diffB) return h2h.diffB - h2h.diffA;
+      if (h2h.scoreA !== h2h.scoreB) return h2h.scoreB - h2h.scoreA;
+    }
+  }
+
+  return 0;
+}
+
 function createComparator(groupMatches: MatchRecord[], rules: RankingRule[]) {
   return (a: StandingItem, b: StandingItem) => {
-    for (const rule of rules) {
-      if (rule === 'score' && a.score !== b.score) return b.score - a.score;
-      if (rule === 'wins' && a.wins !== b.wins) return b.wins - a.wins;
-      if (rule === 'diff' && a.diff !== b.diff) return b.diff - a.diff;
-      if (rule === 'headToHead') {
-        const h2h = getHeadToHeadStat(groupMatches, a.id, b.id);
-        if (h2h.winsA !== h2h.winsB) return h2h.winsB - h2h.winsA;
-        if (h2h.diffA !== h2h.diffB) return h2h.diffB - h2h.diffA;
-        if (h2h.scoreA !== h2h.scoreB) return h2h.scoreB - h2h.scoreA;
-      }
-    }
+    const rankingResult = compareByRankingRules(a, b, groupMatches, rules);
+    if (rankingResult !== 0) return rankingResult;
     return a.id - b.id;
   };
 }
@@ -160,7 +167,7 @@ export function buildStandings({ groups, players, matches, rankingRules, ranking
         return;
       }
       const prev = result[group][idx - 1];
-      player.rank = comparator(prev, player) === 0 ? prev.rank : idx + 1;
+      player.rank = compareByRankingRules(prev, player, groupMatches, rules) === 0 ? prev.rank : idx + 1;
     });
   });
 
