@@ -1,4 +1,3 @@
-import { inflateRawSync } from 'node:zlib';
 import { createError, defineEventHandler, isError, readFormData } from 'h3';
 import { sql } from 'drizzle-orm';
 import { matches, players } from '~/shared/database/schema';
@@ -187,7 +186,18 @@ function getUint32LE(bytes: Uint8Array, offset: number) {
   return (bytes[offset]) | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
 }
 
-function unzipEntries(raw: ArrayBuffer) {
+async function inflateRawData(compressed: Uint8Array) {
+  const DecompressionStreamCtor = globalThis.DecompressionStream;
+  if (typeof DecompressionStreamCtor === 'function') {
+    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStreamCtor('deflate-raw'));
+    const inflated = await new Response(stream).arrayBuffer();
+    return new Uint8Array(inflated);
+  }
+
+  throw createError({ statusCode: 500, statusMessage: '当前运行环境不支持 XLSX 解压（缺少 deflate-raw）' });
+}
+
+async function unzipEntries(raw: ArrayBuffer) {
   const bytes = new Uint8Array(raw);
   let eocdOffset = -1;
   for (let i = bytes.length - 22; i >= 0; i -= 1) {
@@ -235,7 +245,7 @@ function unzipEntries(raw: ArrayBuffer) {
     if (compressionMethod === 0) {
       uncompressed = compressed;
     } else if (compressionMethod === 8) {
-      uncompressed = inflateRawSync(compressed);
+      uncompressed = await inflateRawData(compressed);
     } else {
       throw createError({ statusCode: 400, statusMessage: `XLSX 包含不支持的压缩方式：${compressionMethod}` });
     }
@@ -341,8 +351,8 @@ function parseSheetRows(xml: string, sharedStrings: string[], dateStyleIndexes: 
   return rows;
 }
 
-function parseXlsxRecords(raw: ArrayBuffer) {
-  const entries = unzipEntries(raw);
+async function parseXlsxRecords(raw: ArrayBuffer) {
+  const entries = await unzipEntries(raw);
   const workbookXml = entries.get('xl/workbook.xml');
   if (!workbookXml) {
     throw createError({ statusCode: 400, statusMessage: '无法读取 workbook.xml' });
@@ -426,7 +436,7 @@ async function parseImportRecords(file: File): Promise<ImportRecord[]> {
 
   if (filename.endsWith('.xlsx') || filename.endsWith('.xlsm')) {
     try {
-      return parseXlsxRecords(await file.arrayBuffer());
+      return await parseXlsxRecords(await file.arrayBuffer());
     } catch (error) {
       if (isError(error)) throw error;
       const details = error instanceof Error ? error.message : String(error);
