@@ -13,8 +13,9 @@ const auth = useCookie('auth');
   </div>
 
   <div class="max-w-4xl mx-auto p-4 py-8" v-else>
-    <div class="mb-6">
+    <div class="mb-6 flex items-center justify-between">
       <h1 class="text-2xl font-black">🛠️ 管理后台</h1>
+      <NuxtLink to="/" class="btn-home no-underline">返回首页</NuxtLink>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <NuxtLink to="/admin/matches" class="card p-6 text-center font-bold text-xl text-green-600">📝 比赛成绩管理</NuxtLink>
@@ -26,5 +27,6 @@ const auth = useCookie('auth');
 
 <style scoped>
 .btn-primary { @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-[#fbbf24] text-[#78350f] shadow-[0_4px_0_#d97706] active:translate-y-[2px] active:shadow-[0_2px_0_#d97706]; }
+.btn-home { @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#60a5fa] text-white shadow-[0_4px_0_#2563eb] active:translate-y-[2px] active:shadow-[0_2px_0_#2563eb]; }
 .card { @apply bg-white rounded-[20px] shadow-[0_8px_0_#d1d5db] border-2 border-[#f3f4f6]; }
 </style>

@@ -312,17 +312,6 @@ const bgStyle = computed(() => {
   z-index: 10; 
 }
 
-@media (min-width: 768px) {
-  .controls-row {
-    align-items: flex-start;
-  }
-
-  .filter-input-row,
-  .filter-action-row {
-    justify-content: flex-start;
-  }
-}
-
 .btn-primary {
   @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-gradient-to-r from-amber-300 to-orange-400 text-orange-900 shadow-[0_10px_20px_rgba(251,146,60,0.45)] hover:brightness-105 active:translate-y-[1px];
 }
