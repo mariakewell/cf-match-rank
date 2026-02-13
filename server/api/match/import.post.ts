@@ -1,5 +1,5 @@
 import { inflateRawSync } from 'node:zlib';
-import { createError, defineEventHandler, readFormData } from 'h3';
+import { createError, defineEventHandler, isError, readFormData } from 'h3';
 import { sql } from 'drizzle-orm';
 import { matches, players } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
@@ -135,7 +135,7 @@ function normalizeDateValue(raw: string) {
 }
 
 function decodeBestEffort(bytes: Uint8Array) {
-  const encodings = ['utf-8', 'utf-16le', 'gb18030', 'big5', 'shift_jis'];
+  const encodings = ['utf-8', 'utf-16le', 'gbk', 'gb18030', 'big5', 'shift_jis'];
   const candidates = encodings.map((encoding) => {
     try {
       const text = new TextDecoder(encoding as any, { fatal: false }).decode(bytes);
@@ -367,7 +367,7 @@ function parseXlsxRecords(raw: ArrayBuffer) {
     throw createError({ statusCode: 400, statusMessage: '无法定位第一个工作表' });
   }
 
-  const normalizedTarget = target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//, '')}`;
+  const normalizedTarget = normalizeSheetTarget(target);
   const sheetXml = entries.get(normalizedTarget);
   if (!sheetXml) {
     throw createError({ statusCode: 400, statusMessage: '无法读取第一个工作表' });
@@ -399,6 +399,24 @@ function parseXlsxRecords(raw: ArrayBuffer) {
   }).filter((record) => record.source.length > 0);
 }
 
+function normalizeSheetTarget(target: string) {
+  const cleaned = target.replace(/\\/g, '/').trim();
+  const basePath = cleaned.startsWith('/') ? cleaned.slice(1) : `xl/${cleaned}`;
+  const segments = basePath.split('/');
+  const stack: string[] = [];
+
+  for (const segment of segments) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      stack.pop();
+      continue;
+    }
+    stack.push(segment);
+  }
+
+  return stack.join('/');
+}
+
 async function parseImportRecords(file: File): Promise<ImportRecord[]> {
   const filename = file.name.toLowerCase();
   if (filename.endsWith('.csv') || file.type.includes('csv')) {
@@ -407,7 +425,13 @@ async function parseImportRecords(file: File): Promise<ImportRecord[]> {
   }
 
   if (filename.endsWith('.xlsx') || filename.endsWith('.xlsm')) {
-    return parseXlsxRecords(await file.arrayBuffer());
+    try {
+      return parseXlsxRecords(await file.arrayBuffer());
+    } catch (error) {
+      if (isError(error)) throw error;
+      const details = error instanceof Error ? error.message : String(error);
+      throw createError({ statusCode: 400, statusMessage: `XLSX 解析失败：${details}` });
+    }
   }
 
   if (filename.endsWith('.xls')) {

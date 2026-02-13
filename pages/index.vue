@@ -117,11 +117,20 @@ const resetFilter = () => {
   filterDate.value = '';
   displayDate.value = '';
 
-  if (groupOptions.value.length > 0) {
-    selectGroup(groupOptions.value[0]);
+  if (!selectedGroup.value && groupOptions.value.length > 0) {
+    if (import.meta.client) {
+      const cachedGroup = localStorage.getItem(SELECTED_GROUP_CACHE_KEY) || '';
+      if (cachedGroup && groupOptions.value.includes(cachedGroup)) {
+        selectGroup(cachedGroup);
+      } else {
+        selectGroup(groupOptions.value[0]);
+      }
+    } else {
+      selectGroup(groupOptions.value[0]);
+    }
   }
 
-  show('已恢复默认筛选');
+  show(`已展示 ${selectedGroup.value || '当前组别'} 的全部比赛`);
 };
 
 /** 点击组件外部时关闭组别下拉框。 */
