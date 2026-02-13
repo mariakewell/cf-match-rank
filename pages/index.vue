@@ -188,46 +188,50 @@ const bgStyle = computed(() => {
         </div>
 
         <div class="controls-row">
-          <div ref="groupSelectorRef" class="relative control-item group-control">
-            <input
-              v-model="groupQuery"
-              type="text"
-              placeholder="输入或选择组别"
-              class="field-input pr-11"
-              @focus="openGroupOptions"
-              @input="handleGroupInput"
-            >
-            <button type="button" class="group-toggle" @click="toggleGroupOptions">
-              ▾
-            </button>
-
-            <div
-              v-if="showGroupOptions"
-              class="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
-            >
-              <button
-                v-for="group in visibleGroupOptions"
-                :key="group"
-                type="button"
-                class="group-option"
-                @click="selectGroup(group)"
+          <div class="filter-input-row">
+            <div ref="groupSelectorRef" class="relative control-item group-control">
+              <input
+                v-model="groupQuery"
+                type="text"
+                placeholder="输入或选择组别"
+                class="field-input pr-11"
+                @focus="openGroupOptions"
+                @input="handleGroupInput"
               >
-                {{ group }}
+              <button type="button" class="group-toggle" @click="toggleGroupOptions">
+                ▾
               </button>
-              <div v-if="visibleGroupOptions.length === 0" class="px-3 py-2 text-sm text-slate-400">
-                无匹配组别
+
+              <div
+                v-if="showGroupOptions"
+                class="absolute z-50 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-auto"
+              >
+                <button
+                  v-for="group in visibleGroupOptions"
+                  :key="group"
+                  type="button"
+                  class="group-option"
+                  @click="selectGroup(group)"
+                >
+                  {{ group }}
+                </button>
+                <div v-if="visibleGroupOptions.length === 0" class="px-3 py-2 text-sm text-slate-400">
+                  无匹配组别
+                </div>
               </div>
             </div>
+
+            <input
+              v-model="filterDate"
+              type="date"
+              class="field-input control-item date-control"
+            >
           </div>
 
-          <input
-            v-model="filterDate"
-            type="date"
-            class="field-input control-item date-control"
-          >
-
-          <button @click="applyFilter" class="btn-primary control-item w-[80px] !min-w-0">查询</button>
-          <button @click="resetFilter" class="btn-danger control-item w-[80px] !min-w-0">全部</button>
+          <div class="filter-action-row">
+            <button @click="applyFilter" class="btn-primary control-item w-[80px] !min-w-0">查询</button>
+            <button @click="resetFilter" class="btn-danger control-item w-[80px] !min-w-0">全部</button>
+          </div>
         </div>
       </div>
 
@@ -259,23 +263,29 @@ const bgStyle = computed(() => {
 
 <style scoped>
 .controls-row {
-  @apply flex flex-wrap gap-3 justify-center;
+  @apply flex flex-col items-center gap-3;
+}
+
+.filter-input-row,
+.filter-action-row {
+  @apply flex items-center justify-center gap-3;
 }
 
 @media (max-width: 767px) {
-  .controls-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: end;
+  .filter-input-row {
+    gap: 2px;
   }
 
-  .control-item,
   .group-control,
   .date-control {
-    width: 100%;
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    inline-size: 120px;
+  }
+
+  .control-item {
     min-width: 0;
-    max-width: none;
-    inline-size: auto;
   }
 }
 
@@ -304,7 +314,11 @@ const bgStyle = computed(() => {
 
 @media (min-width: 768px) {
   .controls-row {
-    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .filter-input-row,
+  .filter-action-row {
     justify-content: flex-start;
   }
 }

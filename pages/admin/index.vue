@@ -13,7 +13,9 @@ const auth = useCookie('auth');
   </div>
 
   <div class="max-w-4xl mx-auto p-4 py-8" v-else>
-    <div class="flex flex-col mb-6"><NuxtLink to="/" class="btn-primary self-start mb-4 no-underline">查看首页</NuxtLink><h1 class="text-2xl font-black">🛠️ 管理后台</h1></div>
+    <div class="mb-6">
+      <h1 class="text-2xl font-black">🛠️ 管理后台</h1>
+    </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <NuxtLink to="/admin/matches" class="card p-6 text-center font-bold text-xl text-green-600">📝 比赛成绩管理</NuxtLink>
       <NuxtLink to="/admin/players-groups" class="card p-6 text-center font-bold text-xl text-blue-500">👤 球员与组别管理</NuxtLink>

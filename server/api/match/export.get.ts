@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   checkAuth(event);
   const state = await loadState(event);
 
-  let csvContent = '\uFEFF时间,选手1,比分,选手2,胜方,组别\n';
+  let csvContent = '\uFEFF日期,选手1,选手1得分,选手2得分,选手2,胜方,组别\n';
     // 遍历比赛记录并拼接 CSV 行内容。
   for (const m of state.matches) {
     const p1 = state.players.find((p) => p.id === m.p1_id)?.name || '未知';
@@ -17,8 +17,7 @@ export default defineEventHandler(async (event) => {
     let winner = '平局';
     if (m.s1 > m.s2) winner = p1;
     else if (m.s2 > m.s1) winner = p2;
-    const scoreStr = `="${m.s1}:${m.s2}"`;
-    csvContent += `${m.date},${p1},${scoreStr},${p2},${winner},${m.group}\n`;
+    csvContent += `${m.date},${p1},${m.s1},${m.s2},${p2},${winner},${m.group}\n`;
 
   }
 

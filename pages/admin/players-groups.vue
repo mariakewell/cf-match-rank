@@ -113,7 +113,10 @@ const editPlayer = (p: any) => {
   </div>
 
   <div class="max-w-4xl mx-auto p-4" v-else-if="data">
-    <NuxtLink to="/admin" class="btn-primary inline-block mb-4">返回导航</NuxtLink>
+    <div class="mb-4 flex items-center justify-between">
+      <NuxtLink to="/admin" class="btn-primary inline-flex">返回导航</NuxtLink>
+      <NuxtLink to="/" class="btn-home">返回首页</NuxtLink>
+    </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="card p-6 md:col-span-2">
         <h2 class="font-bold text-lg mb-4 text-blue-500">👤 球员管理</h2>
@@ -161,5 +164,6 @@ const editPlayer = (p: any) => {
 
 <style scoped>
 .btn-primary { @apply inline-flex items-center justify-center h-[44px] px-6 rounded-xl font-bold text-sm transition-all bg-[#fbbf24] text-[#78350f] shadow-[0_4px_0_#d97706] active:translate-y-[2px] active:shadow-[0_2px_0_#d97706]; }
+.btn-home { @apply inline-flex items-center justify-center h-[44px] px-4 rounded-xl font-bold text-sm transition-all bg-[#60a5fa] text-white shadow-[0_4px_0_#2563eb] active:translate-y-[2px] active:shadow-[0_2px_0_#2563eb]; }
 .card { @apply bg-white rounded-[20px] shadow-[0_8px_0_#d1d5db] border-2 border-[#f3f4f6]; }
 </style>

@@ -37,24 +37,9 @@ function parseCsvLine(line: string) {
   return columns;
 }
 
-/**
- * 将 CSV 比分字段统一转换为数字比分。
- */
-function parseScore(scoreText: string) {
-  const normalized = scoreText.replace(/^="?/, '').replace(/"?$/, '').trim();
-  const [s1Text, s2Text] = normalized.split(':').map((part) => part.trim());
-  const s1 = Number(s1Text);
-  const s2 = Number(s2Text);
-
-  if (Number.isNaN(s1) || Number.isNaN(s2)) {
-    throw createError({ statusCode: 400, statusMessage: `比分格式错误：${scoreText}` });
-  }
-
-  return { s1, s2 };
-}
 
 /**
- * 上传 CSV 并按导出字段 + 组别字段批量导入比赛记录。
+ * 上传 CSV 并按日期、选手、双方得分、胜方、组别字段批量导入比赛记录。
  */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
@@ -78,8 +63,8 @@ export default defineEventHandler(async (event) => {
   let importedCount = 0;
 
   for (const line of lines.slice(1)) {
-    const [date, p1Name, scoreText, p2Name, _winner, group] = parseCsvLine(line);
-    if (!date || !p1Name || !p2Name || !scoreText || !group) {
+    const [date, p1Name, s1Text, s2Text, p2Name, _winner, group] = parseCsvLine(line);
+    if (!date || !p1Name || !p2Name || !s1Text || !s2Text || !group) {
       throw createError({ statusCode: 400, statusMessage: `CSV 字段不完整：${line}` });
     }
 
@@ -97,7 +82,11 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: `球员与组别不匹配：${p1Name} vs ${p2Name} / ${group}` });
     }
 
-    const { s1, s2 } = parseScore(scoreText);
+    const s1 = Number(s1Text);
+    const s2 = Number(s2Text);
+    if (Number.isNaN(s1) || Number.isNaN(s2)) {
+      throw createError({ statusCode: 400, statusMessage: `比分格式错误：${s1Text},${s2Text}` });
+    }
     await db.insert(matches).values({
       date,
       group,
