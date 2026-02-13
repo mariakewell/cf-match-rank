@@ -16,6 +16,7 @@ const groupQuery = ref('');
 const showGroupOptions = ref(false);
 const groupOptionMode = ref<'dropdown' | 'search'>('dropdown');
 const groupSelectorRef = ref<HTMLElement | null>(null);
+const SELECTED_GROUP_CACHE_KEY = 'home:selectedGroup';
 
 /** 计算各组积分榜数据。 */
 const standings = computed(() => {
@@ -61,6 +62,10 @@ const selectGroup = (group: string) => {
   selectedGroup.value = group;
   groupQuery.value = group;
   showGroupOptions.value = false;
+
+  if (import.meta.client) {
+    localStorage.setItem(SELECTED_GROUP_CACHE_KEY, group);
+  }
 };
 
 /** 打开组别下拉列表（非搜索模式）。 */
@@ -133,6 +138,14 @@ watch(
       selectedGroup.value = '';
       groupQuery.value = '';
       return;
+    }
+
+    if (import.meta.client) {
+      const cachedGroup = localStorage.getItem(SELECTED_GROUP_CACHE_KEY) || '';
+      if (cachedGroup && groups.includes(cachedGroup)) {
+        selectGroup(cachedGroup);
+        return;
+      }
     }
 
     if (!selectedGroup.value || !groups.includes(selectedGroup.value)) {

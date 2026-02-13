@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, readFormData } from 'h3';
-import { matches } from '~/shared/database/schema';
+import { sql } from 'drizzle-orm';
+import { matches, players } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
 import { loadState } from '~/server/utils/state';
@@ -62,6 +63,16 @@ export default defineEventHandler(async (event) => {
   const validGroups = new Set(state.groups);
   let importedCount = 0;
 
+  const findPlayerByName = (name: string) => {
+    const normalizedName = name.trim().toLowerCase();
+    for (const [playerName, player] of playersByName.entries()) {
+      if (playerName.trim().toLowerCase() === normalizedName) {
+        return player;
+      }
+    }
+    return null;
+  };
+
   for (const line of lines.slice(1)) {
     const [date, p1Name, s1Text, s2Text, p2Name, _winner, group] = parseCsvLine(line);
     if (!date || !p1Name || !p2Name || !s1Text || !s2Text || !group) {
@@ -72,15 +83,31 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: `组别不存在：${group}` });
     }
 
-    const p1 = playersByName.get(p1Name);
-    const p2 = playersByName.get(p2Name);
-    if (!p1 || !p2) {
-      throw createError({ statusCode: 400, statusMessage: `未找到球员：${!p1 ? p1Name : p2Name}` });
-    }
+    const ensurePlayerInGroup = async (playerName: string) => {
+      const existingPlayer = findPlayerByName(playerName);
+      if (!existingPlayer) {
+        const inserted = await db.insert(players).values({
+          name: playerName,
+          groups: [group],
+          createdAt: new Date(),
+        }).returning({ id: players.id });
 
-    if (!p1.groups.includes(group) || !p2.groups.includes(group)) {
-      throw createError({ statusCode: 400, statusMessage: `球员与组别不匹配：${p1Name} vs ${p2Name} / ${group}` });
-    }
+        const newPlayer = { id: inserted[0].id, name: playerName, groups: [group] };
+        playersByName.set(playerName, newPlayer);
+        return newPlayer;
+      }
+
+      if (!existingPlayer.groups.includes(group)) {
+        const nextGroups = [...existingPlayer.groups, group];
+        await db.update(players).set({ groups: nextGroups }).where(sql`${players.id} = ${existingPlayer.id}`);
+        existingPlayer.groups = nextGroups;
+      }
+
+      return existingPlayer;
+    };
+
+    const p1 = await ensurePlayerInGroup(p1Name);
+    const p2 = await ensurePlayerInGroup(p2Name);
 
     const s1 = Number(s1Text);
     const s2 = Number(s2Text);
