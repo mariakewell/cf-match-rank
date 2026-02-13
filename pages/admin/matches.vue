@@ -87,13 +87,13 @@ async function deleteSelectedDate() {
   }
 }
 
-// 打开 CSV 文件选择器。
+// 打开文件选择器。
 function openUploadDialog() {
   uploadInputRef.value?.click();
 }
 
-// 上传 CSV 文件并批量导入比赛记录。
-async function importCsv(event: Event) {
+// 上传表格文件并批量导入比赛记录。
+async function importRecords(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   if (!file) return;
@@ -133,7 +133,7 @@ async function importCsv(event: Event) {
       <div class="flex items-center justify-between mb-4 gap-3">
         <h2 class="font-bold text-xl text-green-600">📝 录入新比分</h2>
         <button type="button" class="btn-upload text-sm" @click="openUploadDialog">📤 上传</button>
-        <input ref="uploadInputRef" type="file" accept=".csv,text/csv" class="hidden" @change="importCsv">
+        <input ref="uploadInputRef" type="file" accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden" @change="importRecords">
       </div>
       <form @submit.prevent="saveMatch" class="space-y-4">
         <div class="flex flex-wrap gap-3 items-end">
