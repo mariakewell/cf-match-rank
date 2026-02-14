@@ -14,63 +14,140 @@ const emit = defineEmits<{
   'update:endDate': [value: string];
 }>();
 
+interface FlatpickrInstance {
+  selectedDates: Date[];
+  calendarContainer?: HTMLElement;
+  setDate: (dates: string[] | Date[], triggerChange?: boolean, format?: string) => void;
+  clear: (emitChangeEvent?: boolean, toInitial?: boolean) => void;
+  formatDate: (dateObj: Date, frmt: string) => string;
+  destroy: () => void;
+}
+
+type FlatpickrFn = (
+  element: HTMLElement,
+  options: Record<string, unknown>,
+) => FlatpickrInstance;
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ASSET_TIMEOUT_MS = 10000;
+
 const inputRef = ref<HTMLInputElement | null>(null);
-let picker: { setDate: (dates: string[], triggerChange?: boolean, format?: string) => void; destroy: () => void } | null = null;
-let removeCalendarClickListener: (() => void) | null = null;
+let picker: FlatpickrInstance | null = null;
 
-const ensureFlatpickrAssets = async () => {
-  if (!import.meta.client) return;
+const isValidYmd = (value: string) => {
+  if (!DATE_RE.test(value)) return false;
 
-  if (!document.querySelector('link[data-flatpickr-css="true"]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
-    link.dataset.flatpickrCss = 'true';
-    document.head.appendChild(link);
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+};
+
+const getModelDates = () => {
+  const startDate = isValidYmd(props.startDate) ? props.startDate : '';
+  const endDate = isValidYmd(props.endDate) ? props.endDate : '';
+
+  if (startDate && endDate && endDate < startDate) {
+    return [endDate, startDate] as const;
   }
 
-  if (!(window as any).flatpickr) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('flatpickr 脚本加载失败'));
-      document.head.appendChild(script);
-    });
-  }
+  return [startDate, endDate] as const;
+};
 
-  await new Promise<void>((resolve, reject) => {
-    if (document.querySelector('script[data-flatpickr-locale-zh="true"]')) {
-      resolve();
-      return;
+const withTimeout = (promise: Promise<void>, label: string) => {
+  return Promise.race([
+    promise,
+    new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} 加载超时`)), ASSET_TIMEOUT_MS);
+    }),
+  ]);
+};
+
+const ensureStyle = () => {
+  if (document.querySelector('link[data-flatpickr-css="true"]')) return;
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+  link.dataset.flatpickrCss = 'true';
+  document.head.appendChild(link);
+};
+
+const loadScript = (selector: string, src: string, datasetKey: string) => {
+  const existingScript = document.querySelector<HTMLScriptElement>(selector);
+  if (existingScript) {
+    if (existingScript.dataset.loaded === 'true') {
+      return Promise.resolve();
     }
 
-    const localeScript = document.createElement('script');
-    localeScript.src = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js';
-    localeScript.async = true;
-    localeScript.dataset.flatpickrLocaleZh = 'true';
-    localeScript.onload = () => resolve();
-    localeScript.onerror = () => reject(new Error('flatpickr 中文语言包加载失败'));
-    document.head.appendChild(localeScript);
-  });
+    return withTimeout(new Promise<void>((resolve, reject) => {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error(`${src} 加载失败`)), { once: true });
+    }), src);
+  }
+
+  return withTimeout(new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.dataset[datasetKey] = 'true';
+    script.addEventListener('load', () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', () => reject(new Error(`${src} 加载失败`)), { once: true });
+    document.head.appendChild(script);
+  }), src);
+};
+
+const ensureFlatpickrAssets = async () => {
+  if (!import.meta.client) return false;
+
+  ensureStyle();
+
+  const win = window as typeof window & {
+    flatpickr?: FlatpickrFn & { l10ns?: { zh?: unknown } };
+  };
+
+  if (!win.flatpickr) {
+    await loadScript('script[data-flatpickr-core="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr', 'flatpickrCore');
+  }
+
+  if (!win.flatpickr?.l10ns?.zh) {
+    await loadScript('script[data-flatpickr-locale-zh="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js', 'flatpickrLocaleZh');
+  }
+
+  return !!win.flatpickr;
 };
 
 const applyModelToPicker = () => {
   if (!picker) return;
 
-  const dates: string[] = [];
-  if (props.startDate) dates.push(props.startDate);
-  if (props.endDate) dates.push(props.endDate);
-  picker.setDate(dates, false, 'Y-m-d');
+  const [startDate, endDate] = getModelDates();
+  const nextDates = [startDate, endDate].filter(Boolean);
+  const currentDates = picker.selectedDates
+    .map((date) => picker?.formatDate(date, 'Y-m-d') || '')
+    .filter(Boolean);
+
+  if (nextDates.length === currentDates.length && nextDates.every((value, index) => value === currentDates[index])) {
+    return;
+  }
+
+  if (nextDates.length === 0) {
+    picker.clear(false);
+    return;
+  }
+
+  picker.setDate(nextDates, false, 'Y-m-d');
 };
 
 onMounted(async () => {
   if (!inputRef.value) return;
 
-  await ensureFlatpickrAssets();
-  const flatpickr = (window as any).flatpickr;
-  if (!flatpickr) return;
+  const isReady = await ensureFlatpickrAssets();
+  const flatpickr = (window as typeof window & { flatpickr?: FlatpickrFn }).flatpickr;
+  if (!isReady || !flatpickr) return;
 
   picker = flatpickr(inputRef.value, {
     mode: 'range',
@@ -78,37 +155,18 @@ onMounted(async () => {
     allowInput: false,
     disableMobile: true,
     locale: 'zh',
-    onReady: (_selectedDates: Date[], _dateStr: string, instance: any) => {
-      const clickHandler = (event: Event) => {
-        const target = event.target as HTMLElement | null;
-        const dayElement = target?.closest('.flatpickr-day') as (HTMLElement & { dateObj?: Date }) | null;
-
-        if (!dayElement?.dateObj) return;
-        if (!instance.selectedDates || instance.selectedDates.length !== 1) return;
-
-        const selectedDate = instance.selectedDates[0];
-        const clickedDate = dayElement.dateObj;
-        if (selectedDate.getTime() !== clickedDate.getTime()) return;
-
-        instance.setDate([selectedDate, selectedDate], true, 'Y-m-d');
-        instance.close();
-      };
-
-      instance.calendarContainer?.addEventListener('click', clickHandler);
-      removeCalendarClickListener = () => {
-        instance.calendarContainer?.removeEventListener('click', clickHandler);
-      };
-    },
-    onChange: (selectedDates: Date[], dateStr: string) => {
-      if (selectedDates.length === 0 || dateStr === '') {
+    onChange: (selectedDates: Date[]) => {
+      const validDates = selectedDates.filter((date) => Number.isFinite(date.getTime()));
+      if (validDates.length === 0) {
         emit('update:startDate', '');
         emit('update:endDate', '');
         return;
       }
 
-      const [startDate = '', endDate = ''] = dateStr.split(' to ');
+      const startDate = picker?.formatDate(validDates[0], 'Y-m-d') || '';
+      const endDate = picker?.formatDate(validDates[1] || validDates[0], 'Y-m-d') || '';
       emit('update:startDate', startDate);
-      emit('update:endDate', endDate || startDate);
+      emit('update:endDate', endDate);
     },
   });
 
@@ -120,8 +178,6 @@ watch(() => [props.startDate, props.endDate], () => {
 });
 
 onBeforeUnmount(() => {
-  removeCalendarClickListener?.();
-  removeCalendarClickListener = null;
   picker?.destroy();
   picker = null;
 });
@@ -133,5 +189,6 @@ onBeforeUnmount(() => {
     type="text"
     :placeholder="placeholder"
     :class="inputClass"
+    readonly
   >
 </template>
