@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { matches, players, settings } from '~/shared/database/schema';
 import { buildStandings, DEFAULT_RANKING_RULES, type RankingRule, type RankingRuleEnabled } from '~/shared/utils/ranking';
+import { applySeasonFilter, type SeasonSettings } from '~/shared/utils/season';
 import { useDb } from '~/server/utils/db';
 
 /**
@@ -20,6 +21,12 @@ export const DEFAULT_DATA = {
       diff: true,
       headToHead: true,
     } as RankingRuleEnabled,
+    seasonSettings: {
+      mode: 'off',
+      startDate: '',
+      endDate: '',
+      recentDays: 30,
+    } as SeasonSettings,
   },
   groups: ['U8 红球组', 'U10 橙球组'],
   players: [
@@ -117,10 +124,12 @@ async function seedDefaultData(event: any) {
 export function calculateStandings(state: AppDbState) {
   const rankingRules = (state.settings.rankingRules as RankingRule[]) || DEFAULT_RANKING_RULES;
   const rankingRuleEnabled = (state.settings.rankingRuleEnabled as RankingRuleEnabled) || DEFAULT_DATA.settings.rankingRuleEnabled;
+  const seasonSettings = state.settings.seasonSettings || DEFAULT_DATA.settings.seasonSettings;
+  const seasonMatches = applySeasonFilter(state.matches, seasonSettings);
   return buildStandings({
     groups: state.groups,
     players: state.players,
-    matches: state.matches,
+    matches: seasonMatches,
     rankingRules,
     rankingRuleEnabled,
   });

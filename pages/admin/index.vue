@@ -21,6 +21,7 @@ const auth = useCookie('auth');
       <NuxtLink to="/admin/matches" class="card p-6 text-center font-bold text-xl text-green-600">📝 比赛成绩管理</NuxtLink>
       <NuxtLink to="/admin/players-groups" class="card p-6 text-center font-bold text-xl text-blue-500">👤 球员与组别管理</NuxtLink>
       <NuxtLink to="/admin/settings" class="card p-6 text-center font-bold text-xl text-gray-500">⚙️ 网站设置</NuxtLink>
+      <NuxtLink to="/admin/rules" class="card p-6 text-center font-bold text-xl text-purple-600">📐 规则设置</NuxtLink>
     </div>
   </div>
 </template>
