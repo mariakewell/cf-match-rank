@@ -37,6 +37,10 @@ let picker: FlatpickrInstance | null = null;
 let removeDayDoubleClickListener: (() => void) | null = null;
 let removeClearButtonListener: (() => void) | null = null;
 let bindPanelTimer: ReturnType<typeof setTimeout> | null = null;
+let selectionTipElement: HTMLSpanElement | null = null;
+
+const START_DATE_TIP = '请选择开始日期';
+const END_DATE_TIP = '请选择结束日期';
 
 const isValidYmd = (value: string) => {
   if (!DATE_RE.test(value)) return false;
@@ -186,6 +190,14 @@ const bindClearButton = () => {
     calendar.appendChild(actionContainer);
   }
 
+  let selectionTip = actionContainer.querySelector<HTMLSpanElement>('.flatpickr-selection-tip');
+  if (!selectionTip) {
+    selectionTip = document.createElement('span');
+    selectionTip.className = 'flatpickr-selection-tip';
+    actionContainer.appendChild(selectionTip);
+  }
+  selectionTipElement = selectionTip;
+
   let clearButton = actionContainer.querySelector<HTMLButtonElement>('.flatpickr-clear-btn');
   if (!clearButton) {
     clearButton = document.createElement('button');
@@ -207,9 +219,17 @@ const bindClearButton = () => {
   };
 };
 
+const updateSelectionTip = () => {
+  if (!selectionTipElement || !picker) return;
+
+  const validDates = picker.selectedDates.filter((date) => Number.isFinite(date.getTime()));
+  selectionTipElement.textContent = validDates.length === 1 ? END_DATE_TIP : START_DATE_TIP;
+};
+
 const bindPanelEnhancements = () => {
   bindDayDoubleClick();
   bindClearButton();
+  updateSelectionTip();
 };
 
 const scheduleBindPanelEnhancements = (attempt = 0) => {
@@ -248,6 +268,7 @@ onMounted(async () => {
       if (validDates.length === 0) {
         emit('update:startDate', '');
         emit('update:endDate', '');
+        updateSelectionTip();
         return;
       }
 
@@ -257,6 +278,7 @@ onMounted(async () => {
         : '';
       emit('update:startDate', startDate);
       emit('update:endDate', endDate);
+      updateSelectionTip();
     },
     onReady: () => {
       scheduleBindPanelEnhancements();
@@ -277,6 +299,7 @@ onMounted(async () => {
 
 watch(() => [props.startDate, props.endDate], () => {
   applyModelToPicker();
+  updateSelectionTip();
 });
 
 onBeforeUnmount(() => {
@@ -288,6 +311,7 @@ onBeforeUnmount(() => {
     clearTimeout(bindPanelTimer);
     bindPanelTimer = null;
   }
+  selectionTipElement = null;
   picker?.destroy();
   picker = null;
 });
@@ -306,11 +330,17 @@ onBeforeUnmount(() => {
 <style>
 .flatpickr-calendar .flatpickr-panel-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   min-height: 40px;
   padding: 8px;
   border-top: 1px solid #e5e7eb;
+}
+
+.flatpickr-calendar .flatpickr-selection-tip {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .flatpickr-calendar .flatpickr-clear-btn {
