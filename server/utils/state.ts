@@ -12,6 +12,7 @@ export const DEFAULT_DATA = {
     title: '🎾 快乐网球积分赛',
     notice: '友谊第一，比赛第二！加油！',
     background: '',
+    favicon: '',
     rankingRules: DEFAULT_RANKING_RULES,
     rankingRuleEnabled: {
       score: true,

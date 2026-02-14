@@ -6,7 +6,7 @@ const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
-const form = reactive({ title: '', notice: '', background: '' });
+const form = reactive({ title: '', notice: '', background: '', favicon: '' });
 const rankingRules = ref<RankingRule[]>([...DEFAULT_RANKING_RULES]);
 const rankingRuleEnabled = ref<RankingRuleEnabled>({
   score: true,
@@ -28,6 +28,7 @@ watchEffect(() => {
     form.title = data.value.settings.title;
     form.notice = data.value.settings.notice;
     form.background = data.value.settings.background;
+    form.favicon = data.value.settings.favicon || '';
     rankingRules.value = data.value.settings.rankingRules?.length
       ? [...data.value.settings.rankingRules]
       : [...DEFAULT_RANKING_RULES];
@@ -78,6 +79,7 @@ async function save() {
   fd.append('title', form.title);
   fd.append('notice', form.notice);
   fd.append('background', form.background);
+  fd.append('favicon', form.favicon);
   fd.append('rankingRules', JSON.stringify(rankingRules.value));
   fd.append('rankingRuleEnabled', JSON.stringify(rankingRuleEnabled.value));
 
@@ -110,6 +112,7 @@ async function save() {
         <div><label class="text-xs font-bold text-gray-400">网站标题</label><input v-model="form.title" type="text" class="w-full p-2 border rounded"></div>
         <div><label class="text-xs font-bold text-gray-400">滚动公告</label><input v-model="form.notice" type="text" class="w-full p-2 border rounded"></div>
         <div><label class="text-xs font-bold text-gray-400">背景图URL (可选)</label><input v-model="form.background" type="url" class="w-full p-2 border rounded"></div>
+        <div><label class="text-xs font-bold text-gray-400">站点图标URL (favicon，可选)</label><input v-model="form.favicon" type="url" class="w-full p-2 border rounded" placeholder="https://.../favicon.png"></div>
 
         <div>
           <label class="text-xs font-bold text-gray-400">排行榜规则（从上到下依次比较）</label>

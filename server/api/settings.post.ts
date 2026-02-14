@@ -6,7 +6,7 @@ import { loadState } from '~/server/utils/state';
 import { DEFAULT_RANKING_RULES, type RankingRule, type RankingRuleEnabled } from '~/shared/utils/ranking';
 
 /**
- * 更新全局站点配置（标题、公告、背景图）。
+ * 更新全局站点配置（标题、公告、背景图、站点图标）。
  */
 export default defineEventHandler(async (event) => {
   checkAuth(event);
@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
     title: formData.get('title')?.toString().trim() || state.settings.title,
     notice: formData.get('notice')?.toString().trim() || state.settings.notice,
     background: formData.get('background')?.toString().trim() || state.settings.background,
+    favicon: formData.get('favicon')?.toString().trim() || state.settings.favicon || '',
     rankingRules,
     rankingRuleEnabled,
   };
