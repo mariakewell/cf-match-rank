@@ -14,7 +14,7 @@ const form = reactive({
   s1: 4,
   s2: 0,
 });
-const filters = reactive({ date: '', player: '' });
+const filters = reactive({ startDate: '', endDate: '', player: '' });
 
 /** 根据当前表单组别筛选可选球员。 */
 const availablePlayers = computed(() => {
@@ -22,13 +22,15 @@ const availablePlayers = computed(() => {
   return data.value.players.filter((p) => p.groups.includes(form.group));
 });
 
-/** 根据日期与球员关键字过滤比赛记录。 */
+/** 根据日期范围与球员关键字过滤比赛记录。 */
 const filteredMatches = computed(() => {
   if (!data.value) return [];
   return data.value.matches.filter((m) => {
     const p1 = data.value!.players.find((p) => p.id === m.p1_id)?.name || '';
     const p2 = data.value!.players.find((p) => p.id === m.p2_id)?.name || '';
-    const dateMatch = filters.date === '' || m.date === filters.date;
+    const dateMatch =
+      (!filters.startDate || m.date >= filters.startDate)
+      && (!filters.endDate || m.date <= filters.endDate);
     const playerText = filters.player.trim().toLowerCase();
     const playerMatch = playerText === '' || p1.toLowerCase().includes(playerText) || p2.toLowerCase().includes(playerText);
     return dateMatch && playerMatch;
@@ -70,17 +72,18 @@ async function deleteMatch(id: number) {
   }
 }
 
-// 按日期批量删除比赛。
-async function deleteSelectedDate() {
-  if (!filters.date) {
-    show('请先选择日期', 'error');
+// 删除筛选结果中的所有比赛。
+async function deleteFilteredMatches() {
+  const matchIds = filteredMatches.value.map((m) => m.id);
+  if (!matchIds.length) {
+    show('当前筛选结果为空，无可删除比赛', 'error');
     return;
   }
-  if (!confirm(`确定删除 ${filters.date} 的所有记录吗？`)) return;
+  if (!confirm(`确定删除当前筛选出的 ${matchIds.length} 场比赛吗？`)) return;
 
   try {
-    const text = await postForm('/api/match/delete_by_date', { date: filters.date });
-    show(text || '批量删除成功');
+    const text = await postForm('/api/match/delete_by_date', { ids: JSON.stringify(matchIds) });
+    show(text || '删除比赛成功');
     refresh();
   } catch (e: any) {
     show(e.message || '删除失败', 'error');
@@ -153,9 +156,10 @@ async function importRecords(event: Event) {
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         <h2 class="font-bold text-xl">📊 比赛记录</h2>
         <div class="flex flex-wrap gap-2">
-          <input v-model="filters.date" type="date" class="border rounded p-2 text-sm">
+          <input v-model="filters.startDate" type="date" class="border rounded p-2 text-sm" title="开始日期">
+          <input v-model="filters.endDate" type="date" class="border rounded p-2 text-sm" title="结束日期">
           <input v-model="filters.player" type="text" placeholder="查询球员..." class="border rounded p-2 text-sm w-32">
-          <button class="btn-danger text-sm" @click="deleteSelectedDate">删除当天</button>
+          <button class="btn-danger text-sm" @click="deleteFilteredMatches">删除比赛</button>
           <a href="/api/match/export" target="_blank" class="btn-success text-sm no-underline">📥 导出CSV</a>
         </div>
       </div>

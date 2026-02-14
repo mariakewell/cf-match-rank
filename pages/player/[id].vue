@@ -5,8 +5,9 @@ const id = Number(route.params.id);
 // 拉取全量数据后在前端做筛选。
 const { data } = await useFetch('/api/data');
 
-// 历史记录筛选条件：日期 + 对手名。
-const filterDate = ref('');
+// 历史记录筛选条件：日期范围 + 对手名。
+const filterStartDate = ref('');
+const filterEndDate = ref('');
 const filterOpponent = ref('');
 
 /** 当前球员对象。 */
@@ -27,7 +28,7 @@ const matches = computed(() => {
     const isP1 = m.p1_id === id;
     const opponentId = isP1 ? m.p2_id : m.p1_id;
     const opponent = data.value?.players.find((p) => p.id === opponentId)?.name || '未知';
-    const dateMatch = filterDate.value === '' || m.date === filterDate.value;
+    const dateMatch = (!filterStartDate.value || m.date >= filterStartDate.value) && (!filterEndDate.value || m.date <= filterEndDate.value);
     const oppMatch = filterOpponent.value.trim() === '' || opponent.toLowerCase().includes(filterOpponent.value.trim().toLowerCase());
     return dateMatch && oppMatch;
   });
@@ -67,9 +68,10 @@ const getOpponentName = (m: any) => {
           <h2 class="font-bold text-xl text-gray-700 ml-2">📊 历史战绩</h2>
           <span class="text-xs text-gray-400">显示 {{ matches.length }} 场</span>
         </div>
-        <div class="flex gap-2">
-          <input v-model="filterDate" type="date" class="bg-white border rounded p-2 text-sm w-1/2">
-          <input v-model="filterOpponent" type="text" placeholder="搜对手名..." class="bg-white border rounded p-2 text-sm w-1/2">
+        <div class="flex flex-wrap gap-2">
+          <input v-model="filterStartDate" type="date" class="bg-white border rounded p-2 text-sm flex-1 min-w-[120px]">
+          <input v-model="filterEndDate" type="date" class="bg-white border rounded p-2 text-sm flex-1 min-w-[120px]">
+          <input v-model="filterOpponent" type="text" placeholder="搜对手名..." class="bg-white border rounded p-2 text-sm flex-1 min-w-[120px]">
         </div>
       </div>
 

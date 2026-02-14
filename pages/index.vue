@@ -9,8 +9,8 @@ const { show } = useToast();
 const { data } = await useFetch('/api/data');
 
 // 前端筛选与展示状态
-const filterDate = ref('');
-const displayDate = ref('');
+const filterStartDate = ref('');
+const filterEndDate = ref('');
 const selectedGroup = ref('');
 const groupQuery = ref('');
 const showGroupOptions = ref(false);
@@ -22,9 +22,13 @@ const SELECTED_GROUP_CACHE_KEY = 'home:selectedGroup';
 const standings = computed(() => {
   if (!data.value) return {};
 
-  const filteredMatches = filterDate.value
-    ? data.value.matches.filter(m => m.date === filterDate.value)
-    : data.value.matches;
+  const filteredMatches = data.value.matches.filter((m) => {
+    if (!filterStartDate.value && !filterEndDate.value) return true;
+
+    if (filterStartDate.value && m.date < filterStartDate.value) return false;
+    if (filterEndDate.value && m.date > filterEndDate.value) return false;
+    return true;
+  });
 
   return buildStandings({
     groups: data.value.groups,
@@ -96,26 +100,23 @@ const handleGroupInput = () => {
   if (firstMatch) selectedGroup.value = firstMatch;
 };
 
-/** 应用筛选条件并刷新当前展示日期。 */
-const applyFilter = () => {
-  if (!selectedGroup.value) {
-    show('请先选择组别', 'error');
-    return;
+/** 计算页面标题中展示的日期范围文案。 */
+const displayDateRange = computed(() => {
+  if (!filterStartDate.value && !filterEndDate.value) return '';
+  if (filterStartDate.value && filterEndDate.value) {
+    return filterStartDate.value === filterEndDate.value
+      ? filterStartDate.value
+      : `${filterStartDate.value} ~ ${filterEndDate.value}`;
   }
-
-  if (!filterDate.value) {
-    show('请先选择日期', 'error');
-    return;
-  }
-
-  displayDate.value = filterDate.value;
-  show(`已更新 ${selectedGroup.value} 在 ${filterDate.value} 的积分`);
-};
+  return filterStartDate.value
+    ? `${filterStartDate.value} 起`
+    : `至 ${filterEndDate.value}`;
+});
 
 /** 重置筛选条件并恢复默认组别。 */
 const resetFilter = () => {
-  filterDate.value = '';
-  displayDate.value = '';
+  filterStartDate.value = '';
+  filterEndDate.value = '';
 
   if (!selectedGroup.value && groupOptions.value.length > 0) {
     if (import.meta.client) {
@@ -206,10 +207,26 @@ const bgStyle = computed(() => {
       <!-- 积分查看卡片 -->
       <div class="score-viewer-card bg-white/90 backdrop-blur-md rounded-3xl shadow-[0_16px_40px_rgba(30,41,59,0.18)] border border-white/80 p-4 mb-8 mx-auto">
         <div class="text-slate-600 font-bold text-sm text-center mb-3">
-          {{ displayDate ? `📅 ${selectedGroup} · ${displayDate} 积分查看` : `📅 积分查看${selectedGroup ? ` · ${selectedGroup}` : ''}` }}
+          {{ displayDateRange ? `📅 ${selectedGroup} · ${displayDateRange} 积分查看` : `📅 积分查看${selectedGroup ? ` · ${selectedGroup}` : ''}` }}
         </div>
 
         <div class="controls-row">
+          <div class="date-row">
+            <div class="field-input date-range-control">
+              <input
+                v-model="filterStartDate"
+                type="date"
+                class="range-date-input"
+              >
+              <span class="text-slate-400 text-xs">至</span>
+              <input
+                v-model="filterEndDate"
+                type="date"
+                class="range-date-input"
+              >
+            </div>
+          </div>
+
           <div class="filter-input-row">
             <div ref="groupSelectorRef" class="relative control-item group-control">
               <input
@@ -243,15 +260,6 @@ const bgStyle = computed(() => {
               </div>
             </div>
 
-            <input
-              v-model="filterDate"
-              type="date"
-              class="field-input control-item date-control"
-            >
-          </div>
-
-          <div class="filter-action-row">
-            <button @click="applyFilter" class="btn-primary control-item w-[80px] !min-w-0">查询</button>
             <button @click="resetFilter" class="btn-danger control-item w-[80px] !min-w-0">全部</button>
           </div>
         </div>
@@ -288,22 +296,33 @@ const bgStyle = computed(() => {
   @apply flex flex-col items-center gap-3;
 }
 
-.filter-input-row,
-.filter-action-row {
-  @apply flex items-center justify-center gap-3;
+.date-row,
+.filter-input-row {
+  @apply flex items-center justify-center;
+}
+
+.filter-input-row {
+  gap: 2px;
 }
 
 @media (max-width: 767px) {
+  .date-row,
   .filter-input-row {
     gap: 2px;
   }
 
-  .group-control,
-  .date-control {
+  .group-control {
     width: 120px;
     min-width: 120px;
     max-width: 120px;
     inline-size: 120px;
+  }
+
+  .date-range-control {
+    width: 202px;
+    min-width: 202px;
+    max-width: 202px;
+    inline-size: 202px;
   }
 
   .control-item {
@@ -320,11 +339,17 @@ const bgStyle = computed(() => {
   width: 160px;
 }
 
-.date-control {
-  width: 150px;
-  min-width: 150px;
-  max-width: 150px;
-  inline-size: 150px;
+.date-range-control {
+  @apply flex items-center justify-center gap-2 px-2;
+  width: 242px;
+  min-width: 242px;
+  max-width: 242px;
+  inline-size: 242px;
+}
+
+.range-date-input {
+  @apply bg-transparent text-sm outline-none;
+  width: 96px;
 }
 
 .score-viewer-card {
