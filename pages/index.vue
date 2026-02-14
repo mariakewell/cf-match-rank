@@ -2,6 +2,7 @@
 // 本文件为页面交互逻辑，所有函数用途均使用中文注释。
 import { onBeforeUnmount, onMounted } from 'vue';
 import { buildStandings } from '~/shared/utils/ranking';
+import { applySeasonFilter } from '~/shared/utils/season';
 
 const { show } = useToast();
 
@@ -22,7 +23,12 @@ const SELECTED_GROUP_CACHE_KEY = 'home:selectedGroup';
 const standings = computed(() => {
   if (!data.value) return {};
 
-  const filteredMatches = data.value.matches.filter((m) => {
+  const hasManualDateFilter = !!filterStartDate.value || !!filterEndDate.value;
+  const sourceMatches = hasManualDateFilter
+    ? data.value.matches
+    : applySeasonFilter(data.value.matches, data.value.settings.seasonSettings);
+
+  const filteredMatches = sourceMatches.filter((m) => {
     if (!filterStartDate.value && !filterEndDate.value) return true;
 
     if (filterStartDate.value && m.date < filterStartDate.value) return false;

@@ -35,6 +35,7 @@ const ASSET_TIMEOUT_MS = 10000;
 const inputRef = ref<HTMLInputElement | null>(null);
 let picker: FlatpickrInstance | null = null;
 let removeDayDoubleClickListener: (() => void) | null = null;
+let removeClearButtonListener: (() => void) | null = null;
 
 const isValidYmd = (value: string) => {
   if (!DATE_RE.test(value)) return false;
@@ -171,6 +172,40 @@ const bindDayDoubleClick = () => {
   };
 };
 
+const bindClearButton = () => {
+  if (!picker?.calendarContainer) return;
+
+  removeClearButtonListener?.();
+
+  const calendar = picker.calendarContainer;
+  let actionContainer = calendar.querySelector<HTMLElement>('.flatpickr-panel-actions');
+  if (!actionContainer) {
+    actionContainer = document.createElement('div');
+    actionContainer.className = 'flatpickr-panel-actions';
+    calendar.appendChild(actionContainer);
+  }
+
+  let clearButton = actionContainer.querySelector<HTMLButtonElement>('.flatpickr-clear-btn');
+  if (!clearButton) {
+    clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'flatpickr-clear-btn';
+    clearButton.textContent = '清空';
+    actionContainer.appendChild(clearButton);
+  }
+
+  const handleClearClick = () => {
+    if (!picker) return;
+    picker.clear(true);
+    picker.close();
+  };
+
+  clearButton.addEventListener('click', handleClearClick);
+  removeClearButtonListener = () => {
+    clearButton?.removeEventListener('click', handleClearClick);
+  };
+};
+
 onMounted(async () => {
   if (!inputRef.value) return;
 
@@ -201,12 +236,15 @@ onMounted(async () => {
     },
     onReady: () => {
       bindDayDoubleClick();
+      bindClearButton();
     },
     onMonthChange: () => {
       bindDayDoubleClick();
+      bindClearButton();
     },
     onYearChange: () => {
       bindDayDoubleClick();
+      bindClearButton();
     },
   });
 
@@ -220,6 +258,8 @@ watch(() => [props.startDate, props.endDate], () => {
 onBeforeUnmount(() => {
   removeDayDoubleClickListener?.();
   removeDayDoubleClickListener = null;
+  removeClearButtonListener?.();
+  removeClearButtonListener = null;
   picker?.destroy();
   picker = null;
 });
@@ -234,3 +274,27 @@ onBeforeUnmount(() => {
     readonly
   >
 </template>
+
+<style>
+.flatpickr-calendar .flatpickr-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.flatpickr-calendar .flatpickr-clear-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.flatpickr-calendar .flatpickr-clear-btn:hover {
+  background: #f3f4f6;
+}
+</style>
