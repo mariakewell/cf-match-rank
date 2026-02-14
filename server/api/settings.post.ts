@@ -1,4 +1,4 @@
-import { defineEventHandler, readFormData } from 'h3';
+import { createError, defineEventHandler, readFormData } from 'h3';
 import { settings } from '~/shared/database/schema';
 import { checkAuth } from '~/server/utils/auth';
 import { useDb } from '~/server/utils/db';
@@ -46,10 +46,24 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const logoText = formData.get('logo')?.toString().trim();
+  const logoFile = formData.get('logoFile');
+  let nextLogo = logoText ?? state.settings.logo ?? '';
+
+  if (logoFile instanceof File && logoFile.size > 0) {
+    if (!logoFile.type.startsWith('image/')) {
+      throw createError({ statusCode: 400, statusMessage: 'Logo 文件必须是图片类型' });
+    }
+
+    const base64 = Buffer.from(await logoFile.arrayBuffer()).toString('base64');
+    nextLogo = `data:${logoFile.type};base64,${base64}`;
+  }
+
   const nextSettings = {
     title: formData.get('title')?.toString().trim() || state.settings.title,
     notice: formData.get('notice')?.toString().trim() || state.settings.notice,
     background: formData.get('background')?.toString().trim() || state.settings.background,
+    logo: nextLogo,
     rankingRules,
     rankingRuleEnabled,
   };

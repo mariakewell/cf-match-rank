@@ -57,6 +57,9 @@ const getOpponentName = (m: any) => {
   <div class="min-h-screen flex flex-col items-center p-4" v-if="player">
     <div class="w-full max-w-md">
       <NuxtLink to="/" class="inline-block mb-4 px-4 py-2 bg-white rounded-full font-bold text-blue-500 shadow-sm border">← 返回排行榜</NuxtLink>
+      <div class="mb-3" v-if="data?.settings?.logo">
+        <img :src="data.settings.logo" alt="网站 Logo" class="h-12 w-auto object-contain">
+      </div>
       <div class="bg-gradient-to-br from-blue-400 to-indigo-500 p-6 rounded-3xl text-white shadow-lg mb-6 text-center">
         <h1 class="text-3xl font-black">{{ player.name }}</h1>
         <div class="mt-2 text-lg font-bold">{{ stats.total }}场比赛 {{ stats.wins }}胜 {{ stats.draws }}平 {{ stats.losses }}负</div>

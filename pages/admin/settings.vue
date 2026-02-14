@@ -6,7 +6,9 @@ const auth = useCookie('auth');
 const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
-const form = reactive({ title: '', notice: '', background: '' });
+const form = reactive({ title: '', notice: '', background: '', logo: '' });
+const logoFile = ref<File | null>(null);
+const logoPreview = ref('');
 const rankingRules = ref<RankingRule[]>([...DEFAULT_RANKING_RULES]);
 const rankingRuleEnabled = ref<RankingRuleEnabled>({
   score: true,
@@ -28,6 +30,8 @@ watchEffect(() => {
     form.title = data.value.settings.title;
     form.notice = data.value.settings.notice;
     form.background = data.value.settings.background;
+    form.logo = data.value.settings.logo || '';
+    logoFile.value = null;
     rankingRules.value = data.value.settings.rankingRules?.length
       ? [...data.value.settings.rankingRules]
       : [...DEFAULT_RANKING_RULES];
@@ -39,6 +43,31 @@ watchEffect(() => {
       diff: sourceEnabled.diff !== false,
       headToHead: sourceEnabled.headToHead !== false,
     };
+  }
+});
+
+watch(logoFile, (file) => {
+  if (logoPreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(logoPreview.value);
+  }
+
+  if (file) {
+    logoPreview.value = URL.createObjectURL(file);
+    return;
+  }
+
+  logoPreview.value = form.logo;
+});
+
+watch(() => form.logo, (value) => {
+  if (!logoFile.value) {
+    logoPreview.value = value;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (logoPreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(logoPreview.value);
   }
 });
 
@@ -72,12 +101,35 @@ const handleRuleEnabledChange = (rule: RankingRule, event: Event) => {
   toggleRuleEnabled(rule, !!target?.checked);
 };
 
+/** 读取 logo 上传文件（仅图片）。 */
+const handleLogoUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  const file = target?.files?.[0] || null;
+  if (!file) {
+    logoFile.value = null;
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    show('请上传图片类型文件', 'error');
+    target.value = '';
+    logoFile.value = null;
+    return;
+  }
+
+  logoFile.value = file;
+};
+
 // 保存全局设置。
 async function save() {
   const fd = new FormData();
   fd.append('title', form.title);
   fd.append('notice', form.notice);
   fd.append('background', form.background);
+  fd.append('logo', form.logo);
+  if (logoFile.value) {
+    fd.append('logoFile', logoFile.value);
+  }
   fd.append('rankingRules', JSON.stringify(rankingRules.value));
   fd.append('rankingRuleEnabled', JSON.stringify(rankingRuleEnabled.value));
 
@@ -110,6 +162,13 @@ async function save() {
         <div><label class="text-xs font-bold text-gray-400">网站标题</label><input v-model="form.title" type="text" class="w-full p-2 border rounded"></div>
         <div><label class="text-xs font-bold text-gray-400">滚动公告</label><input v-model="form.notice" type="text" class="w-full p-2 border rounded"></div>
         <div><label class="text-xs font-bold text-gray-400">背景图URL (可选)</label><input v-model="form.background" type="url" class="w-full p-2 border rounded"></div>
+        <div>
+          <label class="text-xs font-bold text-gray-400">网站 Logo（支持 URL / Base64）</label>
+          <input v-model="form.logo" type="text" class="w-full p-2 border rounded" placeholder="可填写图片 URL 或 data:image/...base64,...">
+          <label class="text-xs font-bold text-gray-400 mt-2 block">或上传图片（保存为 Base64）</label>
+          <input type="file" accept="image/*" class="w-full p-2 border rounded bg-white" @change="handleLogoUpload">
+          <img v-if="logoPreview" :src="logoPreview" alt="logo预览" class="mt-3 h-16 w-auto object-contain rounded border bg-gray-50 p-2">
+        </div>
 
         <div>
           <label class="text-xs font-bold text-gray-400">排行榜规则（从上到下依次比较）</label>

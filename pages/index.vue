@@ -195,6 +195,12 @@ const bgStyle = computed(() => {
     <div class="max-w-7xl mx-auto px-6 sm:px-3 pt-6 md:pt-8">
       <!-- 页面头部 -->
       <header class="text-center mb-6 animate-fade-in-down" v-if="data">
+        <img
+          v-if="data.settings.logo"
+          :src="data.settings.logo"
+          alt="网站 Logo"
+          class="mx-auto mb-3 h-16 w-auto object-contain"
+        >
         <h1 class="text-4xl md:text-5xl font-black text-orange-600 mb-2">
           {{ data.settings.title }}
         </h1>
