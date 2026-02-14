@@ -36,6 +36,7 @@ const inputRef = ref<HTMLInputElement | null>(null);
 let picker: FlatpickrInstance | null = null;
 let removeDayDoubleClickListener: (() => void) | null = null;
 let removeClearButtonListener: (() => void) | null = null;
+let bindPanelTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isValidYmd = (value: string) => {
   if (!DATE_RE.test(value)) return false;
@@ -206,6 +207,29 @@ const bindClearButton = () => {
   };
 };
 
+const bindPanelEnhancements = () => {
+  bindDayDoubleClick();
+  bindClearButton();
+};
+
+const scheduleBindPanelEnhancements = (attempt = 0) => {
+  if (!picker?.calendarContainer) return;
+
+  bindPanelTimer && clearTimeout(bindPanelTimer);
+
+  const calendar = picker.calendarContainer;
+  const isPanelReady = !!calendar.querySelector('.flatpickr-days');
+  if (isPanelReady || attempt >= 8) {
+    bindPanelEnhancements();
+    bindPanelTimer = null;
+    return;
+  }
+
+  bindPanelTimer = setTimeout(() => {
+    scheduleBindPanelEnhancements(attempt + 1);
+  }, 16);
+};
+
 onMounted(async () => {
   if (!inputRef.value) return;
 
@@ -235,16 +259,16 @@ onMounted(async () => {
       emit('update:endDate', endDate);
     },
     onReady: () => {
-      bindDayDoubleClick();
-      bindClearButton();
+      scheduleBindPanelEnhancements();
+    },
+    onOpen: () => {
+      scheduleBindPanelEnhancements();
     },
     onMonthChange: () => {
-      bindDayDoubleClick();
-      bindClearButton();
+      scheduleBindPanelEnhancements();
     },
     onYearChange: () => {
-      bindDayDoubleClick();
-      bindClearButton();
+      scheduleBindPanelEnhancements();
     },
   });
 
@@ -260,6 +284,10 @@ onBeforeUnmount(() => {
   removeDayDoubleClickListener = null;
   removeClearButtonListener?.();
   removeClearButtonListener = null;
+  if (bindPanelTimer) {
+    clearTimeout(bindPanelTimer);
+    bindPanelTimer = null;
+  }
   picker?.destroy();
   picker = null;
 });
@@ -279,6 +307,8 @@ onBeforeUnmount(() => {
 .flatpickr-calendar .flatpickr-panel-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  min-height: 40px;
   padding: 8px;
   border-top: 1px solid #e5e7eb;
 }
