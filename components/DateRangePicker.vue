@@ -33,10 +33,11 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ASSET_TIMEOUT_MS = 10000;
 
 const inputRef = ref<HTMLInputElement | null>(null);
+const pickerReady = ref(false);
 let picker: FlatpickrInstance | null = null;
 let removeDayDoubleClickListener: (() => void) | null = null;
 let removeClearButtonListener: (() => void) | null = null;
-let bindPanelTimer: ReturnType<typeof setTimeout> | null = null;
+let panelBindFrameId: number | null = null;
 let selectionTipElement: HTMLSpanElement | null = null;
 
 const START_DATE_TIP = '请选择开始日期';
@@ -82,20 +83,19 @@ const ensureStyle = () => {
   document.head.appendChild(link);
 };
 
-const loadScript = (selector: string, src: string, datasetKey: string) => {
+const loadScript = async (selector: string, src: string, datasetKey: string) => {
   const existingScript = document.querySelector<HTMLScriptElement>(selector);
   if (existingScript) {
-    if (existingScript.dataset.loaded === 'true') {
-      return Promise.resolve();
-    }
+    if (existingScript.dataset.loaded === 'true') return;
 
-    return withTimeout(new Promise<void>((resolve, reject) => {
+    await withTimeout(new Promise<void>((resolve, reject) => {
       existingScript.addEventListener('load', () => resolve(), { once: true });
       existingScript.addEventListener('error', () => reject(new Error(`${src} 加载失败`)), { once: true });
     }), src);
+    return;
   }
 
-  return withTimeout(new Promise<void>((resolve, reject) => {
+  await withTimeout(new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
@@ -118,15 +118,28 @@ const ensureFlatpickrAssets = async () => {
     flatpickr?: FlatpickrFn & { l10ns?: { zh?: unknown } };
   };
 
-  if (!win.flatpickr) {
-    await loadScript('script[data-flatpickr-core="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr', 'flatpickrCore');
-  }
+  try {
+    if (!win.flatpickr) {
+      await loadScript('script[data-flatpickr-core="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr', 'flatpickrCore');
+    }
 
-  if (!win.flatpickr?.l10ns?.zh) {
-    await loadScript('script[data-flatpickr-locale-zh="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js', 'flatpickrLocaleZh');
-  }
+    if (!win.flatpickr) {
+      throw new Error('flatpickr 核心未就绪');
+    }
 
-  return !!win.flatpickr;
+    if (!win.flatpickr?.l10ns?.zh) {
+      try {
+        await loadScript('script[data-flatpickr-locale-zh="true"]', 'https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js', 'flatpickrLocaleZh');
+      } catch (error) {
+        console.warn('[DateRangePicker] zh 语言包加载失败，将回退默认语言。', error);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[DateRangePicker] flatpickr 资源加载失败，将回退为只读文本输入。', error);
+    return false;
+  }
 };
 
 const applyModelToPicker = () => {
@@ -232,22 +245,20 @@ const bindPanelEnhancements = () => {
   updateSelectionTip();
 };
 
-const scheduleBindPanelEnhancements = (attempt = 0) => {
+const queueBindPanelEnhancements = () => {
   if (!picker?.calendarContainer) return;
 
-  bindPanelTimer && clearTimeout(bindPanelTimer);
-
-  const calendar = picker.calendarContainer;
-  const isPanelReady = !!calendar.querySelector('.flatpickr-days');
-  if (isPanelReady || attempt >= 8) {
-    bindPanelEnhancements();
-    bindPanelTimer = null;
-    return;
+  if (panelBindFrameId !== null) {
+    cancelAnimationFrame(panelBindFrameId);
+    panelBindFrameId = null;
   }
 
-  bindPanelTimer = setTimeout(() => {
-    scheduleBindPanelEnhancements(attempt + 1);
-  }, 16);
+  panelBindFrameId = requestAnimationFrame(() => {
+    panelBindFrameId = requestAnimationFrame(() => {
+      bindPanelEnhancements();
+      panelBindFrameId = null;
+    });
+  });
 };
 
 onMounted(async () => {
@@ -261,8 +272,11 @@ onMounted(async () => {
     mode: 'range',
     dateFormat: 'Y-m-d',
     allowInput: false,
-    disableMobile: true,
-    locale: 'zh',
+    disableMobile: false,
+    clickOpens: true,
+    appendTo: document.body,
+    positionElement: inputRef.value,
+    locale: ((window as any).flatpickr?.l10ns?.zh ? 'zh' : undefined),
     onChange: (selectedDates: Date[]) => {
       const validDates = selectedDates.filter((date) => Number.isFinite(date.getTime()));
       if (validDates.length === 0) {
@@ -281,16 +295,17 @@ onMounted(async () => {
       updateSelectionTip();
     },
     onReady: () => {
-      scheduleBindPanelEnhancements();
+      pickerReady.value = true;
+      queueBindPanelEnhancements();
     },
     onOpen: () => {
-      scheduleBindPanelEnhancements();
+      queueBindPanelEnhancements();
     },
     onMonthChange: () => {
-      scheduleBindPanelEnhancements();
+      queueBindPanelEnhancements();
     },
     onYearChange: () => {
-      scheduleBindPanelEnhancements();
+      queueBindPanelEnhancements();
     },
   });
 
@@ -298,6 +313,7 @@ onMounted(async () => {
 });
 
 watch(() => [props.startDate, props.endDate], () => {
+  if (!pickerReady.value) return;
   applyModelToPicker();
   updateSelectionTip();
 });
@@ -307,9 +323,9 @@ onBeforeUnmount(() => {
   removeDayDoubleClickListener = null;
   removeClearButtonListener?.();
   removeClearButtonListener = null;
-  if (bindPanelTimer) {
-    clearTimeout(bindPanelTimer);
-    bindPanelTimer = null;
+  if (panelBindFrameId !== null) {
+    cancelAnimationFrame(panelBindFrameId);
+    panelBindFrameId = null;
   }
   selectionTipElement = null;
   picker?.destroy();
