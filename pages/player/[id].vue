@@ -84,7 +84,10 @@ const getOpponentName = (m: any) => {
       <div class="flex flex-col gap-3">
         <div v-for="m in matches" :key="m.id" class="bg-white p-4 rounded-xl border-2 border-gray-100 flex justify-between items-center shadow-sm">
           <div>
-            <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ m.date }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ m.date }}</span>
+              <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{{ m.group }}</span>
+            </div>
             <div class="font-bold text-lg mt-1">vs {{ getOpponentName(m) }}</div>
           </div>
           <div class="text-right">
