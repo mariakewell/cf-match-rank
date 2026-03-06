@@ -1,4 +1,4 @@
-export type SeasonMode = 'off' | 'dateRange' | 'recentDays';
+export type SeasonMode = 'off' | 'dateRange' | 'recentDays' | 'singleDateAfter' | 'singleDateBefore';
 
 export interface SeasonSettings {
   mode: SeasonMode;
@@ -30,7 +30,12 @@ const toUtcYmd = (date: Date) => {
 
 export const normalizeSeasonSettings = (input?: Partial<SeasonSettings> | null): SeasonSettings => {
   const mode = input?.mode;
-  const nextMode: SeasonMode = mode === 'dateRange' || mode === 'recentDays' ? mode : 'off';
+  const nextMode: SeasonMode = mode === 'dateRange'
+    || mode === 'recentDays'
+    || mode === 'singleDateAfter'
+    || mode === 'singleDateBefore'
+    ? mode
+    : 'off';
 
   const recentDays = Number.isFinite(input?.recentDays)
     ? Math.max(1, Math.min(3650, Math.floor(input!.recentDays as number)))
@@ -58,6 +63,18 @@ export const applySeasonFilter = <T extends { date: string }>(matches: T[], inpu
       if (end && match.date > end) return false;
       return true;
     });
+  }
+
+  if (season.mode === 'singleDateAfter') {
+    const start = season.startDate;
+    if (!start) return matches;
+    return matches.filter((match) => match.date >= start);
+  }
+
+  if (season.mode === 'singleDateBefore') {
+    const end = season.endDate;
+    if (!end) return matches;
+    return matches.filter((match) => match.date <= end);
   }
 
   const now = new Date();
