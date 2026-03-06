@@ -141,6 +141,8 @@ async function saveRules() {
             <label class="flex items-center gap-2"><input v-model="seasonMode" type="radio" value="off"> 不启用赛季过滤</label>
             <label class="flex items-center gap-2"><input v-model="seasonMode" type="radio" value="dateRange"> 仅统计指定日期范围</label>
             <label class="flex items-center gap-2"><input v-model="seasonMode" type="radio" value="recentDays"> 仅统计当前日期前 N 天</label>
+            <label class="flex items-center gap-2"><input v-model="seasonMode" type="radio" value="singleDateAfter"> 统计指定日期之后（含当天）</label>
+            <label class="flex items-center gap-2"><input v-model="seasonMode" type="radio" value="singleDateBefore"> 统计指定日期之前（含当天）</label>
           </div>
 
           <div v-if="seasonMode === 'dateRange'" class="pt-1">
@@ -152,6 +154,24 @@ async function saveRules() {
               @update:start-date="seasonStartDate = $event"
               @update:end-date="seasonEndDate = $event"
             />
+          </div>
+
+          <div v-if="seasonMode === 'singleDateAfter'" class="pt-1">
+            <label class="text-xs font-bold text-gray-400">起始日期</label>
+            <input
+              v-model="seasonStartDate"
+              type="date"
+              class="w-full p-2 border rounded"
+            >
+          </div>
+
+          <div v-if="seasonMode === 'singleDateBefore'" class="pt-1">
+            <label class="text-xs font-bold text-gray-400">截止日期</label>
+            <input
+              v-model="seasonEndDate"
+              type="date"
+              class="w-full p-2 border rounded"
+            >
           </div>
 
           <div v-if="seasonMode === 'recentDays'" class="pt-1">
