@@ -272,7 +272,8 @@ onMounted(async () => {
     mode: 'range',
     dateFormat: 'Y-m-d',
     allowInput: false,
-    disableMobile: false,
+    // 在移动端保留 flatpickr 面板，避免 readonly 输入触发原生日期框失败导致无法点击。
+    disableMobile: true,
     clickOpens: true,
     appendTo: document.body,
     positionElement: inputRef.value,
