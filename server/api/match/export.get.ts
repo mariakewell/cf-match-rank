@@ -1,4 +1,4 @@
-import { defineEventHandler, setHeaders } from 'h3';
+import { defineEventHandler, getQuery, setHeaders } from 'h3';
 import { loadState } from '~/server/utils/state';
 import { checkAuth } from '~/server/utils/auth';
 
@@ -8,17 +8,32 @@ import { checkAuth } from '~/server/utils/auth';
 export default defineEventHandler(async (event) => {
   checkAuth(event);
   const state = await loadState(event);
+  const query = getQuery(event);
+
+  const startDate = typeof query.startDate === 'string' ? query.startDate : '';
+  const endDate = typeof query.endDate === 'string' ? query.endDate : '';
+  const playerKeyword = typeof query.player === 'string' ? query.player.trim().toLowerCase() : '';
+
+  // 按日期范围与球员关键字过滤需要导出的比赛记录。
+  const matches = state.matches.filter((m) => {
+    const p1 = state.players.find((p) => p.id === m.p1_id)?.name || '';
+    const p2 = state.players.find((p) => p.id === m.p2_id)?.name || '';
+    const dateMatch = (!startDate || m.date >= startDate) && (!endDate || m.date <= endDate);
+    const playerMatch = !playerKeyword
+      || p1.toLowerCase().includes(playerKeyword)
+      || p2.toLowerCase().includes(playerKeyword);
+    return dateMatch && playerMatch;
+  });
 
   let csvContent = '\uFEFF日期,选手1,选手1得分,选手2得分,选手2,胜方,组别\n';
-    // 遍历比赛记录并拼接 CSV 行内容。
-  for (const m of state.matches) {
+  // 遍历比赛记录并拼接 CSV 行内容。
+  for (const m of matches) {
     const p1 = state.players.find((p) => p.id === m.p1_id)?.name || '未知';
     const p2 = state.players.find((p) => p.id === m.p2_id)?.name || '未知';
     let winner = '平局';
     if (m.s1 > m.s2) winner = p1;
     else if (m.s2 > m.s1) winner = p2;
     csvContent += `${m.date},${p1},${m.s1},${m.s2},${p2},${winner},${m.group}\n`;
-
   }
 
   setHeaders(event, {

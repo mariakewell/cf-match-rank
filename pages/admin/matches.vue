@@ -16,6 +16,17 @@ const form = reactive({
 });
 const filters = reactive({ startDate: '', endDate: '', player: '' });
 
+/** 生成导出链接：仅导出当前筛选范围内的比赛记录。 */
+const exportUrl = computed(() => {
+  const params = new URLSearchParams();
+  if (filters.startDate) params.set('startDate', filters.startDate);
+  if (filters.endDate) params.set('endDate', filters.endDate);
+  const player = filters.player.trim();
+  if (player) params.set('player', player);
+  const queryString = params.toString();
+  return queryString ? `/api/match/export?${queryString}` : '/api/match/export';
+});
+
 /** 根据当前表单组别筛选可选球员。 */
 const availablePlayers = computed(() => {
   if (!data.value || !form.group) return [];
@@ -166,7 +177,7 @@ async function importRecords(event: Event) {
           />
           <input v-model="filters.player" type="text" placeholder="查询球员..." class="border rounded p-2 text-sm w-32">
           <button class="btn-danger text-sm" @click="deleteFilteredMatches">删除比赛</button>
-          <a href="/api/match/export" target="_blank" class="btn-success text-sm no-underline">📥 导出CSV</a>
+          <a :href="exportUrl" target="_blank" class="btn-success text-sm no-underline">📥 导出CSV</a>
         </div>
       </div>
       <div class="max-h-96 overflow-y-auto"><table class="w-full text-left"><thead class="sticky top-0 bg-white text-xs text-gray-400 border-b"><tr><th class="p-2">日期</th><th class="p-2">对阵</th><th class="p-2 hidden sm:table-cell">组别</th><th class="p-2 text-right">操作</th></tr></thead><tbody>
