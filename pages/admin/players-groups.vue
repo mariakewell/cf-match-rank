@@ -5,6 +5,8 @@ const { data, refresh } = await useFetch('/api/data');
 const { show } = useToast();
 
 const playerForm = reactive({ id: '', name: '', groups: [] as string[] });
+const selectedPlayerIds = ref<number[]>([]);
+const batchGroups = ref<string[]>([]);
 const searchInput = ref('');
 const activeGroup = ref('');
 
@@ -54,9 +56,26 @@ async function deletePlayer(id: number) {
   try {
     const text = await postForm('/api/player/delete', { id });
     show(text || '删除成功');
+    selectedPlayerIds.value = selectedPlayerIds.value.filter((selectedId) => selectedId !== id);
     refresh();
   } catch (e: any) {
     show(e.message || '删除失败', 'error');
+  }
+}
+
+/** 批量更新已选择球员的组别。 */
+async function updateSelectedPlayersGroups() {
+  try {
+    const text = await postForm('/api/player/batch-update-groups', {
+      ids: JSON.stringify(selectedPlayerIds.value),
+      groups: batchGroups.value,
+    });
+    show(text || '组别调整成功');
+    selectedPlayerIds.value = [];
+    batchGroups.value = [];
+    refresh();
+  } catch (e: any) {
+    show(e.message || '组别调整失败', 'error');
   }
 }
 
@@ -94,6 +113,18 @@ const clearPlayerFilter = () => {
   activeGroup.value = '';
   searchInput.value = '';
 };
+/** 仅选择当前筛选结果中的全部球员。 */
+const toggleFilteredPlayers = () => {
+  const ids = filteredPlayers.value.map((player) => player.id);
+  const allSelected = ids.length > 0 && ids.every((id) => selectedPlayerIds.value.includes(id));
+  selectedPlayerIds.value = allSelected
+    ? selectedPlayerIds.value.filter((id) => !ids.includes(id))
+    : [...new Set([...selectedPlayerIds.value, ...ids])];
+};
+const isAllFilteredPlayersSelected = computed(() => (
+  filteredPlayers.value.length > 0
+  && filteredPlayers.value.every((player) => selectedPlayerIds.value.includes(player.id))
+));
 /** 将球员信息回填到表单，进入编辑态。 */
 const editPlayer = (p: any) => {
   playerForm.id = String(p.id);
@@ -134,9 +165,25 @@ const editPlayer = (p: any) => {
           <input v-model="searchInput" type="text" placeholder="搜索姓名..." class="flex-1 p-2 border rounded">
           <button @click="clearPlayerFilter" class="ml-2 text-xs text-gray-500">显示全部</button>
         </div>
+        <form v-if="selectedPlayerIds.length > 0" @submit.prevent="updateSelectedPlayersGroups" class="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <p class="mb-2 text-sm font-bold text-blue-600">已选择 {{ selectedPlayerIds.length }} 名球员，调整为以下组别：</p>
+          <div class="mb-3 flex flex-wrap gap-2">
+            <label v-for="g in data.groups" :key="g" class="flex items-center gap-1 rounded border bg-white px-2 py-1 text-xs">
+              <input v-model="batchGroups" type="checkbox" :value="g"> {{ g }}
+            </label>
+          </div>
+          <button class="rounded bg-blue-500 px-3 py-2 text-sm font-bold text-white">批量调整组别</button>
+        </form>
         <div>
+          <label v-if="filteredPlayers.length > 0" class="mb-2 flex items-center gap-2 text-xs text-gray-500">
+            <input type="checkbox" :checked="isAllFilteredPlayersSelected" @change="toggleFilteredPlayers">
+            全选当前列表
+          </label>
           <div v-for="p in filteredPlayers" :key="p.id" class="player-item flex justify-between items-center bg-gray-50 p-2 rounded mb-2">
-            <div><div class="font-bold text-sm">{{ p.name }}</div><div class="text-[10px] text-gray-400">{{ p.groups.join(', ') }}</div></div>
+            <div class="flex min-w-0 items-center gap-2">
+              <input v-model="selectedPlayerIds" type="checkbox" :value="p.id" :aria-label="`选择${p.name}`">
+              <div><div class="font-bold text-sm">{{ p.name }}</div><div class="text-[10px] text-gray-400">{{ p.groups.join(', ') }}</div></div>
+            </div>
             <div class="flex gap-2">
               <button @click="editPlayer(p)" class="text-xs text-blue-400 font-bold">编辑</button>
               <button @click="deletePlayer(p.id)" class="text-xs text-red-400 font-bold">删除</button>
